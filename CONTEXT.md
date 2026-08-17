@@ -24,7 +24,7 @@ The syntax-validation step that may reject a mutation before it is written; "blo
 _Avoid_: pre-write guard, validator (when referring to the decision step)
 
 **Blocked call**:
-A tool call that fails with an error result (isError) and leaves the filesystem completely untouched — no file modified, no file or directory created.
+A tool call that fails with an error result (isError) and leaves its target file untouched — no file modified by the failed operation, no file or directory created for it. Multi-file edit calls process files sequentially in the library's existing order, so sibling files of a blocked file may already be written (parity — the host adds no all-or-nothing orchestration).
 
 **Pass-through**:
 An unvalidated write: unknown/no extension, or a grammar unavailable at runtime. Deliberate and permanent (never-block), not a degraded mode.
