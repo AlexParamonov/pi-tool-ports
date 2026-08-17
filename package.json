@@ -1,0 +1,59 @@
+{
+  "name": "pi-tool-ports",
+  "version": "0.0.0",
+  "description": "Universal plug-n-play hub for pi tool extensions",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-agent",
+    "pi-coding-agent",
+    "pi-extension",
+    "tools",
+    "edit",
+    "write",
+    "syntax-validation"
+  ],
+  "author": "AlexParamonov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexParamonov/pi-tool-ports.git"
+  },
+  "homepage": "https://github.com/AlexParamonov/pi-tool-ports#readme",
+  "bugs": {
+    "url": "https://github.com/AlexParamonov/pi-tool-ports/issues"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=0.82.0",
+    "@earendil-works/pi-coding-agent": ">=0.82.0",
+    "@earendil-works/pi-tui": ">=0.82.0"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.52",
+    "pi-semantic-edit": "0.4.0",
+    "pi-tree-sitter": "0.2.8"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "format": "prettier --write src/ test/",
+    "format:check": "prettier --check src/ test/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.84.2",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.7"
+  }
+}
