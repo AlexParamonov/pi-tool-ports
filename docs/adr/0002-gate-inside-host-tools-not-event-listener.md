@@ -1,0 +1,5 @@
+# Gate validation inside the host's own edit/write tools, not a tool_call event listener
+
+pi-tree-sitter's gate is a `pi.on("tool_call", ...)` listener that intercepts edit/write before execution and simulates the edit with pi's built-in matcher. pi-tool-ports instead registers its own `edit` and `write` tools (which replace the built-ins by name) and validates inside each tool's execute: match with pi-semantic-edit's fuzzy chain → apply in memory → validate the exact post-apply bytes → write only if valid.
+
+Only the tool itself can validate the true post-apply content: the event-listener simulation uses pi's built-in matcher and silently skips validation on fuzzy-only matches (the US-1 gap). It also cannot reach pi-semantic-edit's matcher at all, since the listener fires before any extension tool runs. Side effect: the host must replicate the gate's message format byte-for-byte (ADR-0001) because that logic is private to the listener's file.

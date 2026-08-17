@@ -1,0 +1,5 @@
+# Never block what cannot be validated: grammar-unavailable and unknown-extension content passes through
+
+pi-tree-sitter fetches grammars from the jsDelivr CDN at first use (disk-cached with 30-day freshness) and never blocks when a grammar cannot be loaded — it silently falls through to delimiter balance, or to pass-through when no rules exist. Unknown or missing extensions likewise pass through. pi-tool-ports inherits this behavior byte-for-byte instead of hardening it.
+
+The alternative — blocking when validation is impossible — was rejected: it would invent failure in cases the baseline treats as fine (offline first run, fringe extensions, Lisp-like false positives), and the whole point of this stack is parity with the two libraries' existing contracts. The accepted cost is documented in the acceptance criteria: "write of broken TS/JS is blocked" holds only when the grammar is loadable, and a cold cache performs one CDN download inside the first validated tool call per language.
