@@ -51,6 +51,14 @@ function toolError(error: EditError): Error {
   return Object.assign(new Error(error.message), { editError: error });
 }
 
+/** Extract an error code from an unknown thrown value for diagnostic messages. */
+function errorCode(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return `${(err as { code?: unknown }).code}`;
+  }
+  return String(err);
+}
+
 interface FileGroup {
   path: string;
   blocks: EditRequestLike[];
@@ -138,11 +146,9 @@ export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
         try {
           await fsAccess(absolutePath, constants.R_OK | constants.W_OK);
         } catch (err) {
-          const code =
-            err && typeof err === "object" && "code" in err
-              ? `${(err as { code?: unknown }).code}`
-              : String(err);
-          throw toolError(fileNotFoundError(`${group.path} (${code})`));
+          throw toolError(
+            fileNotFoundError(`${group.path} (${errorCode(err)})`),
+          );
         }
 
         throwIfAborted();
@@ -150,13 +156,9 @@ export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
         try {
           buffer = await readFile(absolutePath);
         } catch (err) {
-          const code =
-            err && typeof err === "object" && "code" in err
-              ? `${(err as { code?: unknown }).code}`
-              : String(err);
           throw toolError(
             validationError(
-              `Could not read ${group.path} (${code}) — the file may have changed or been removed. Re-read the file and retry the edit.`,
+              `Could not read ${group.path} (${errorCode(err)}) — the file may have changed or been removed. Re-read the file and retry the edit.`,
             ),
           );
         }
