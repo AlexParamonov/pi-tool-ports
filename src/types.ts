@@ -1,0 +1,37 @@
+import type { Tree } from "web-tree-sitter";
+import type { NotifyFn } from "pi-tree-sitter/src/grammar";
+
+/**
+ * Injectable grammar seam — the validator's only external dependency.
+ *
+ * The default implementation (gate.ts) calls pts's real grammar loader.
+ * Unit tests inject fakes that return predetermined parse trees without
+ * WASM, CDN, or cache access.
+ *
+ * `available` distinguishes "grammar loaded but tree is null/clean"
+ * (unconditional pass) from "grammar unavailable" (delimiter-only
+ * rules may apply).
+ */
+export interface GrammarResult {
+  available: boolean;
+  tree: Tree | null;
+}
+
+export type GrammarFn = (
+  ext: string,
+  content: string,
+  notify?: NotifyFn,
+) => Promise<GrammarResult>;
+
+// ── Gate error contract ─────────────────────────────────────────────
+
+/** Structured error a blocked tool call carries (for renderers/debugging). */
+export interface GateBlockError extends Error {
+  editError: { kind: "syntax"; message: string };
+}
+
+export function gateBlockError(message: string): GateBlockError {
+  return Object.assign(new Error(message), {
+    editError: { kind: "syntax" as const, message },
+  });
+}
