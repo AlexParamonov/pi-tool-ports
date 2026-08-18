@@ -1,23 +1,22 @@
 /**
- * Syntax-validation gate — reimplemented byte-for-byte from pi-tree-sitter's
- * private validateContent/collectErrors/formatError/lineAt/CLOSER_LABELS/MAX_ERRORS.
+ * Syntax-validation gate \u2014 validates content before write.
  *
- * This is the only new logic in the host. The three message templates and
- * per-error rendering are the byte-parity contract (spec "Known Constraints
- * & Risks"). The grammar seam is injectable: unit tests use fake parse trees;
- * the default implementation calls pts's real grammar loader.
+ * Uses tree-sitter for full AST parsing and delimiter balance checks.
+ * The grammar seam is injectable: unit tests use fake parse trees.
  */
 import {
   BALANCE_RULES,
   checkDelimiterBalance,
   LANGUAGE_MAP,
 } from "../adapters/tree-sitter";
+import {
+  MAX_ERRORS,
+  lineAt,
+  formatError,
+  collectErrors,
+} from "../adapters/tree-sitter/internal";
 
 import type { GrammarFn } from "../types";
-
-// ── Error collection (byte-for-byte from pi-tree-sitter/index.ts) ──────
-
-const MAX_ERRORS = 10;
 
 const GUARD_MSG =
   "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
@@ -33,43 +32,6 @@ function formatErrors(errors: string[]): string {
   return body;
 }
 
-function lineAt(source: string, offset: number): string {
-  const start = source.lastIndexOf("\n", offset - 1) + 1;
-  const end = source.indexOf("\n", offset);
-  return source.slice(start, end === -1 ? source.length : end);
-}
-
-const CLOSER_LABELS: Record<string, string> = {
-  ")": "parenthesis",
-  "]": "bracket",
-  "}": "brace",
-};
-
-function formatError(node: NodeLike, source: string): string {
-  const line = node.startPosition.row + 1;
-  const col = node.startPosition.column + 1;
-  const raw = source.slice(
-    node.startIndex,
-    Math.min(node.endIndex, source.length),
-  );
-  const snippet = raw.split("\n")[0].slice(0, 80).trimEnd();
-
-  if (node.isMissing) {
-    const label = CLOSER_LABELS[node.type];
-    if (label) {
-      return `Missing \`${node.type}\` — unclosed ${label} at line ${line}:${col}`;
-    }
-    return `Missing \`${node.type}\` at line ${line}:${col}`;
-  }
-
-  // Error node (unexpected token)
-  const label = CLOSER_LABELS[snippet];
-  if (label) {
-    return `Unexpected \`${snippet}\` — extra closing ${label} at line ${line}:${col}`;
-  }
-  return `Unexpected \`${snippet}\` at line ${line}:${col}`;
-}
-
 interface NodeLike {
   type: string;
   isError: boolean;
@@ -80,56 +42,6 @@ interface NodeLike {
   childCount: number;
   child: (i: number) => NodeLike;
   children: NodeLike[];
-}
-
-function collectErrors(tree: { rootNode: NodeLike }, source: string): string[] {
-  const errors: string[] = [];
-  const stack: NodeLike[] = [tree.rootNode];
-
-  while (stack.length > 0 && errors.length < MAX_ERRORS) {
-    const node = stack.pop()!;
-    if (node.isError || node.isMissing) {
-      // ERROR nodes can span a large region with more specific
-      // error/missing children inside.  Descend to find the narrowest
-      // error — the child will have a better position and snippet.
-      if (node.isError && !node.isMissing) {
-        let hasSpecificChild = false;
-        for (let i = 0; i < node.childCount; i++) {
-          const c = node.child(i);
-          if (c.isError || c.isMissing) {
-            hasSpecificChild = true;
-            break;
-          }
-        }
-        if (hasSpecificChild) {
-          for (let i = node.childCount - 1; i >= 0; i--)
-            stack.push(node.child(i));
-          continue;
-        }
-      }
-      const msg = formatError(node, source);
-      const offset = node.startIndex;
-      const ctxLine = lineAt(source, offset);
-      const lineStart = source.lastIndexOf("\n", offset) + 1;
-      const col = offset - lineStart;
-      const pointer = " ".repeat(Math.max(0, col)) + "^";
-      const lineNum = node.startPosition.row + 1;
-      errors.push(
-        "  " +
-          msg +
-          "\n    |\n    " +
-          lineNum +
-          " | " +
-          ctxLine +
-          "\n    | " +
-          pointer,
-      );
-      continue;
-    }
-    const children = node.children;
-    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
-  }
-  return errors;
 }
 
 // ── Gate decision table ────────────────────────────────────────────────
