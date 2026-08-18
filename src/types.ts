@@ -23,6 +23,13 @@ export type GrammarFn = (
   notify?: NotifyFn,
 ) => Promise<GrammarResult>;
 
+// ── Gated tool options ──────────────────────────────────────────────
+
+/** Options shared by both gated edit and gated write tools. */
+export interface GatedToolOptions {
+  grammar?: GrammarFn;
+}
+
 // ── Gate error contract ─────────────────────────────────────────────
 
 /** Structured error a blocked tool call carries (for renderers/debugging). */

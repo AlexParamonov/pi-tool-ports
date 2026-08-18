@@ -44,7 +44,7 @@ import type { EditRequestLike } from "pi-semantic-edit/src/pi/normalize";
 import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
 import { validateContent } from "./gate";
-import { gateBlockError, type GrammarFn } from "./types";
+import { gateBlockError, type GatedToolOptions } from "./types";
 
 // --- Throw an Error carrying a structured EditError (for renderers/debugging) ---
 function toolError(error: EditError): Error {
@@ -79,9 +79,7 @@ function groupByPath(blocks: EditRequestLike[]): FileGroup[] {
   return groups;
 }
 
-export interface GatedEditOptions {
-  grammar?: GrammarFn;
-}
+export type GatedEditOptions = GatedToolOptions;
 
 /**
  * Create the gated edit tool. Captures every surface field from pse's

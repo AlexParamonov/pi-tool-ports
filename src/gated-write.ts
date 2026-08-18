@@ -13,7 +13,7 @@ import type {
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import { validateContent } from "./gate";
-import { gateBlockError, type GrammarFn } from "./types";
+import { gateBlockError, type GatedToolOptions } from "./types";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -44,9 +44,7 @@ function builtinResolveToCwd(filePath: string, cwd: string): string {
 
 // ── Gated write tool factory ──────────────────────────────────────────
 
-export interface GatedWriteToolOptions {
-  grammar?: GrammarFn;
-}
+export type GatedWriteToolOptions = GatedToolOptions;
 
 export function createGatedWriteTool(
   cwd: string,
@@ -54,7 +52,7 @@ export function createGatedWriteTool(
 ) {
   const grammar = options?.grammar;
   const builtinDef = createWriteToolDefinition(cwd);
-  const { execute: _builtinExecute, ...surface } = builtinDef;
+  const { ...surface } = builtinDef;
 
   const execute = async (
     toolCallId: string,
