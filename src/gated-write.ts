@@ -1,11 +1,6 @@
 /**
- * Gated write tool — wraps the built-in write definition.
- *
- * Validates the exact content against the path's extension through the
- * injectable grammar seam before any I/O. Blocked calls throw the parity
- * error with zero filesystem side effects (no file, no parent directories).
- * Clean calls delegate to the built-in execute unchanged (mkdir, direct
- * writeFile, content verbatim, built-in success text).
+ * Gated write tool: validate before any I/O, zero side effects on block,
+ * clean calls delegate to the built-in write unchanged.
  */
 
 import { homedir } from "node:os";
@@ -19,12 +14,6 @@ import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import { validateContent } from "./gate";
 import { gateBlockError, type GrammarFn } from "./types";
-
-// ── Path resolution (ported from pi-coding-agent's path-utils) ────────
-// pi-coding-agent's exports map blocks deep imports. This is a minimal
-// port of `resolveToCwd` that matches the built-in behavior: unicode-space
-// normalization, @-prefix strip, tilde expand, file:// URLs, then
-// isAbsolute → resolve, else resolve(baseDir, input).
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -59,13 +48,6 @@ export interface GatedWriteToolOptions {
   grammar?: GrammarFn;
 }
 
-/**
- * Create a gated write execute function that validates content before
- * any I/O, then delegates to the built-in write execute unchanged.
- *
- * Returns the gated execute alongside the captured surface (everything
- * except execute from the built-in definition) for registration.
- */
 export function createGatedWriteTool(
   cwd: string,
   options?: GatedWriteToolOptions,

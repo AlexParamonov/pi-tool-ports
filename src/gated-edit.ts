@@ -51,7 +51,6 @@ function toolError(error: EditError): Error {
   return Object.assign(new Error(error.message), { editError: error });
 }
 
-/** Extract an error code from an unknown thrown value for diagnostic messages. */
 function errorCode(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
     return `${(err as { code?: unknown }).code}`;

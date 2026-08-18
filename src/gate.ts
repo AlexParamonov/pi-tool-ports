@@ -19,11 +19,9 @@ import type { GrammarFn } from "./types";
 
 const MAX_ERRORS = 10;
 
-/** The guard message appended to every blocked-call diagnostic. */
 const GUARD_MSG =
   "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
 
-/** Format a list of error diagnostics, capping at MAX_ERRORS. */
 function formatErrors(errors: string[]): string {
   let body = errors.join("\n");
   if (errors.length >= MAX_ERRORS) {
@@ -35,21 +33,18 @@ function formatErrors(errors: string[]): string {
   return body;
 }
 
-/** Return the line content that contains `offset`, for context. */
 function lineAt(source: string, offset: number): string {
   const start = source.lastIndexOf("\n", offset - 1) + 1;
   const end = source.indexOf("\n", offset);
   return source.slice(start, end === -1 ? source.length : end);
 }
 
-/** Names for anonymous closing-token types that clarify the issue. */
 const CLOSER_LABELS: Record<string, string> = {
   ")": "parenthesis",
   "]": "bracket",
   "}": "brace",
 };
 
-/** Produce a human-readable, context-rich error for one tree-sitter node. */
 function formatError(node: NodeLike, source: string): string {
   const line = node.startPosition.row + 1;
   const col = node.startPosition.column + 1;
@@ -75,7 +70,6 @@ function formatError(node: NodeLike, source: string): string {
   return `Unexpected \`${snippet}\` at line ${line}:${col}`;
 }
 
-/** Minimal node shape used by collectErrors and formatError. */
 interface NodeLike {
   type: string;
   isError: boolean;

@@ -17,11 +17,6 @@ export interface GrammarResult {
   tree: Tree | null;
 }
 
-/**
- * Parser seam: given a file extension and content, returns whether a
- * grammar was loaded and the parsed tree. Unit tests inject fakes here;
- * the default seam downloads WASM grammars from CDN.
- */
 export type GrammarFn = (
   ext: string,
   content: string,
@@ -35,7 +30,6 @@ export interface GateBlockError extends Error {
   editError: { kind: "syntax"; message: string };
 }
 
-/** Create a gate-block error from a parity message. */
 export function gateBlockError(message: string): GateBlockError {
   return Object.assign(new Error(message), {
     editError: { kind: "syntax" as const, message },
