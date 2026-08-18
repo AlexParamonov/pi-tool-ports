@@ -17,26 +17,41 @@ const CONFIG_FILE_NAME = "pi-tool-ports.json";
 const CONFIG_DIR = getAgentDir();
 const GLOBAL_CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE_NAME);
 
-/** Read config from disk, merged with defaults. */
-export function loadConfig(
-  projectDir?: string,
-  globalDir?: string,
-): ToolPortsConfig {
-  const gPath = globalDir
-    ? path.join(globalDir, CONFIG_FILE_NAME)
-    : GLOBAL_CONFIG_PATH;
-  const global = readJson(gPath) ?? {};
-  const project = projectDir
-    ? readJson(path.join(projectDir, CONFIG_FILE_NAME))
-    : null;
-  const g: ExcludeConfig = global.exclude ?? {};
-  const p: ExcludeConfig = project?.exclude ?? {};
+/** Persistence port for config loading. */
+export interface ConfigIO {
+  load(): ToolPortsConfig;
+}
+
+/** Default file-based ConfigIO. */
+export function createFileConfigIO(projectDir?: string): ConfigIO {
+  return {
+    load: () => {
+      const global = readJson(GLOBAL_CONFIG_PATH) ?? {};
+      const project = projectDir
+        ? readJson(path.join(projectDir, CONFIG_FILE_NAME))
+        : null;
+      return {
+        exclude: {
+          patterns: [
+            ...((global.exclude as ExcludeConfig | undefined)?.patterns ?? []),
+            ...((project?.exclude as ExcludeConfig | undefined)?.patterns ??
+              []),
+          ],
+        },
+      };
+    },
+  };
+}
+
+/** Read config, merged with defaults. Accepts injectable ConfigIO for testing. */
+export function loadConfig(io?: ConfigIO): ToolPortsConfig {
+  const loaded = (io ?? createFileConfigIO()).load();
+  const g: ExcludeConfig = loaded.exclude ?? {};
   return {
     exclude: {
       patterns: [
         ...(DEFAULT_CONFIG.exclude?.patterns ?? []),
         ...(g.patterns ?? []),
-        ...(p.patterns ?? []),
       ],
     },
   };
