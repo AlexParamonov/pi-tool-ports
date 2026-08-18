@@ -54,6 +54,22 @@ export function loadConfig(io?: ConfigIO): ToolPortsConfig {
         ...(g.patterns ?? []),
       ],
     },
+    ports: {
+      edit: {
+        adapters: loaded.ports?.edit?.adapters ??
+          DEFAULT_CONFIG.ports?.edit?.adapters ?? [
+            "semantic-edit",
+            "tree-sitter",
+          ],
+      },
+      write: {
+        adapters: loaded.ports?.write?.adapters ??
+          DEFAULT_CONFIG.ports?.write?.adapters ?? [
+            "semantic-edit",
+            "tree-sitter",
+          ],
+      },
+    },
   };
 }
 

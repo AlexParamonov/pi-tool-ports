@@ -88,6 +88,7 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
   const base = createRobustEditTool(cwd, stub);
   const { execute: _baseExecute, ...surface } = base;
   const grammar = opts?.grammar;
+  const treeSitter = opts?.treeSitter;
   const excludePatterns = opts?.exclude?.patterns ?? [];
 
   const execute = async (
@@ -181,6 +182,7 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
           group.path,
           finalContent,
           grammar,
+          treeSitter,
         );
         if (blockMessage !== null) {
           throw gateBlockError(blockMessage);
