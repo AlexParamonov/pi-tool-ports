@@ -11,7 +11,8 @@
     "tools",
     "edit",
     "write",
-    "syntax-validation"
+    "syntax-validation",
+    "ai"
   ],
   "author": "AlexParamonov",
   "license": "MIT",
