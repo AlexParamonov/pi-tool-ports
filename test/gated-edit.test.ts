@@ -3,7 +3,7 @@
 // Drives `createGatedEditTool().execute` against a real temp-dir filesystem
 // with fake parse trees. No WASM, no CDN, no cache in unit tests.
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
@@ -530,6 +530,315 @@ describe("gated edit: non-syntax pse error contract", () => {
       expect(hostErr).toBeDefined();
       expect(hostErr!.message).toBe(oracleErr!.message);
       expect(hostErr!.message).toContain("File not found");
+    });
+  });
+});
+
+// ── Multi-file parity (R15) ────────────────────────────────────────────
+//
+// The deprecated aider patch string is the ONLY multi-file input: every
+// other accepted shape stamps the single top-level path onto all blocks.
+// execute is driven directly with raw { patch } — prepareArguments is the
+// agent loop's job. Per-file sequential semantics: each file completes
+// (read → apply → gate → write) before the next; a blocked file is
+// untouched; earlier siblings may already be written (parity with pse).
+
+const MF_F1 = "const a = 1;\n";
+const MF_F1_APPLIED = "const a = 10;\n";
+const MF_F2 = "const c = 2;\n";
+const MF_F2_APPLIED_VALID = "const c = 20;\n";
+const MF_F2_APPLIED_BROKEN = "const c = ;\n";
+
+/** Build an aider patch with one SEARCH/REPLACE block per file, each
+ *  preceded by its path header (first-seen order = header order). */
+function multiFilePatch(
+  files: [name: string, oldText: string, newText: string][],
+): string {
+  return files
+    .flatMap(([name, oldText, newText]) => [
+      name,
+      "<<<<<<< SEARCH",
+      oldText,
+      "=======",
+      newText,
+      ">>>>>>> REPLACE",
+    ])
+    .join("\n");
+}
+
+describe("gated edit: multi-file parity (R15)", () => {
+  test("applies every file when all post-apply content is valid", async () => {
+    await withTempDir(async (dir) => {
+      const f1 = join(dir, "f1.ts");
+      const f2 = join(dir, "f2.ts");
+      await writeFile(f1, MF_F1);
+      await writeFile(f2, MF_F2);
+
+      const { grammar, calls } = recordingGrammar({
+        available: true,
+        tree: makeFakeCleanTree(),
+      });
+      const tool = createTool(dir, grammar);
+
+      const result = await tool.execute(
+        "call-1",
+        {
+          patch: multiFilePatch([
+            ["f1.ts", "const a = 1;", "const a = 10;"],
+            ["f2.ts", "const c = 2;", "const c = 20;"],
+          ]),
+        },
+        undefined,
+        undefined,
+        fakeCtx(dir),
+      );
+
+      // Both per-file summaries, one line each
+      expect(result.content[0].text).toContain(
+        "Successfully replaced 1 replacement across 1 edit(s) in f1.ts.",
+      );
+      expect(result.content[0].text).toContain(
+        "Successfully replaced 1 replacement across 1 edit(s) in f2.ts.",
+      );
+
+      // Success details present (primary file carries diff/patch)
+      expect(result.details).toBeDefined();
+      expect(typeof result.details.diff).toBe("string");
+      expect(typeof result.details.patch).toBe("string");
+      expect(typeof result.details.firstChangedLine).toBe("number");
+      expect(Array.isArray(result.details.matchPasses)).toBe(true);
+
+      // Gate consulted once per file
+      expect(calls).toHaveLength(2);
+      expect(calls.map((c) => c.ext)).toEqual([".ts", ".ts"]);
+
+      // Both files on disk equal their post-apply content
+      expect(await readFile(f1, "utf-8")).toBe(MF_F1_APPLIED);
+      expect(await readFile(f2, "utf-8")).toBe(MF_F2_APPLIED_VALID);
+    });
+  });
+
+  test("consults the grammar in first-seen patch order", async () => {
+    await withTempDir(async (dir) => {
+      const f1 = join(dir, "f1.ts");
+      const f2 = join(dir, "f2.ts");
+      await writeFile(f1, MF_F1);
+      await writeFile(f2, MF_F2);
+
+      const { grammar, calls } = recordingGrammar({
+        available: true,
+        tree: makeFakeCleanTree(),
+      });
+      const tool = createTool(dir, grammar);
+
+      // f2's header comes FIRST in the patch
+      await tool.execute(
+        "call-1",
+        {
+          patch: multiFilePatch([
+            ["f2.ts", "const c = 2;", "const c = 20;"],
+            ["f1.ts", "const a = 1;", "const a = 10;"],
+          ]),
+        },
+        undefined,
+        undefined,
+        fakeCtx(dir),
+      );
+
+      expect(calls.map((c) => c.content)).toEqual([
+        MF_F2_APPLIED_VALID,
+        MF_F1_APPLIED,
+      ]);
+    });
+  });
+
+  test("multiple edits to one file take a single gate pass", async () => {
+    await withTempDir(async (dir) => {
+      const filePath = join(dir, "a.ts");
+      await writeFile(filePath, "const a = 1;\nconst b = 2;\n");
+
+      const { grammar, calls } = recordingGrammar({
+        available: true,
+        tree: makeFakeCleanTree(),
+      });
+      const tool = createTool(dir, grammar);
+
+      const result = await tool.execute(
+        "call-1",
+        {
+          path: "a.ts",
+          edits: [
+            { oldText: "const a = 1;", newText: "const a = 10;" },
+            { oldText: "const b = 2;", newText: "const b = 20;" },
+          ],
+        },
+        undefined,
+        undefined,
+        fakeCtx(dir),
+      );
+
+      expect(result.content[0].text).toContain(
+        "Successfully replaced 2 replacements across 2 edit(s) in a.ts.",
+      );
+
+      // One file → one group → one validation
+      expect(calls).toHaveLength(1);
+
+      const diskContent = await readFile(filePath, "utf-8");
+      expect(diskContent).toBe("const a = 10;\nconst b = 20;\n");
+    });
+  });
+
+  test("a broken second file blocks the call after the first file lands", async () => {
+    await withTempDir(async (dir) => {
+      const f1 = join(dir, "f1.ts");
+      const f2 = join(dir, "f2.ts");
+      await writeFile(f1, MF_F1);
+      await writeFile(f2, MF_F2);
+
+      const f2Original = await readFile(f2);
+
+      // Broken parse tree only for f2's write-form content
+      const { grammar, calls } = recordingGrammar((_ext, content) =>
+        content === MF_F2_APPLIED_BROKEN
+          ? { available: true, tree: makeFakeBrokenTree() }
+          : { available: true, tree: makeFakeCleanTree() },
+      );
+      const tool = createTool(dir, grammar);
+
+      const err = await captureBlock(
+        tool.execute(
+          "call-1",
+          {
+            patch: multiFilePatch([
+              ["f1.ts", "const a = 1;", "const a = 10;"],
+              ["f2.ts", "const c = 2;", "const c = ;"],
+            ]),
+          },
+          undefined,
+          undefined,
+          fakeCtx(dir),
+        ),
+      );
+
+      // First file already landed (sequential per-file completion)
+      expect(await readFile(f1, "utf-8")).toBe(MF_F1_APPLIED);
+
+      // Second file byte-identical to pre-call
+      expect(Buffer.compare(f2Original, await readFile(f2))).toBe(0);
+
+      // Parity block message names the blocked file (raw path from the
+      // patch header, as pse reports paths)
+      expect(err.message).toContain("Syntax check failed for f2.ts:");
+      expect(err.message).toContain("error(s) detected by tree-sitter");
+      expect(err.message).toContain("NOT modified");
+
+      // Error contract: structured editError mirrors the message
+      expect(err.editError).toBeDefined();
+      expect(err.editError!.kind).toBe("syntax");
+      expect(err.editError!.message).toBe(err.message);
+
+      // Gate consulted once per file, in order; the loop stopped at the block
+      expect(calls.map((c) => c.content)).toEqual([
+        MF_F1_APPLIED,
+        MF_F2_APPLIED_BROKEN,
+      ]);
+
+      // No stray temp files from either file
+      const files = (await readdir(dir)).sort();
+      expect(files).toEqual(["f1.ts", "f2.ts"]);
+    });
+  });
+
+  test("a blocked first file leaves later files untouched", async () => {
+    await withTempDir(async (dir) => {
+      const f1 = join(dir, "f1.ts");
+      const f2 = join(dir, "f2.ts");
+      await writeFile(f1, MF_F1);
+      await writeFile(f2, MF_F2);
+
+      const f1Original = await readFile(f1);
+
+      const { grammar, calls } = recordingGrammar((_ext, content) =>
+        content === MF_F2_APPLIED_BROKEN
+          ? { available: true, tree: makeFakeBrokenTree() }
+          : { available: true, tree: makeFakeCleanTree() },
+      );
+      const tool = createTool(dir, grammar);
+
+      // f2 (broken) FIRST, f1 (valid) second
+      const err = await captureBlock(
+        tool.execute(
+          "call-1",
+          {
+            patch: multiFilePatch([
+              ["f2.ts", "const c = 2;", "const c = ;"],
+              ["f1.ts", "const a = 1;", "const a = 10;"],
+            ]),
+          },
+          undefined,
+          undefined,
+          fakeCtx(dir),
+        ),
+      );
+
+      expect(err.message).toContain("Syntax check failed for f2.ts:");
+
+      // Loop stopped at the first block: later file never even gated
+      expect(calls).toHaveLength(1);
+      expect(calls[0].content).toBe(MF_F2_APPLIED_BROKEN);
+
+      // Later file byte-identical; blocked file byte-identical
+      expect(Buffer.compare(f1Original, await readFile(f1))).toBe(0);
+      expect(await readFile(f2, "utf-8")).toBe(MF_F2);
+    });
+  });
+
+  test("a no-match on the second file leaves the first file written", async () => {
+    await withTempDir(async (dir) => {
+      const f1 = join(dir, "f1.ts");
+      const f2 = join(dir, "f2.ts");
+      await writeFile(f1, MF_F1);
+      await writeFile(f2, MF_F2);
+
+      const f2Original = await readFile(f2);
+
+      const { grammar, calls } = recordingGrammar({
+        available: true,
+        tree: makeFakeCleanTree(),
+      });
+      const tool = createTool(dir, grammar);
+
+      // f2's oldText does not exist in f2.ts
+      const err = await captureBlock(
+        tool.execute(
+          "call-1",
+          {
+            patch: multiFilePatch([
+              ["f1.ts", "const a = 1;", "const a = 10;"],
+              ["f2.ts", "absent text", "replaced"],
+            ]),
+          },
+          undefined,
+          undefined,
+          fakeCtx(dir),
+        ),
+      );
+
+      // First file already landed before the second file failed
+      expect(await readFile(f1, "utf-8")).toBe(MF_F1_APPLIED);
+
+      // Second file byte-identical (apply failed before any write)
+      expect(Buffer.compare(f2Original, await readFile(f2))).toBe(0);
+
+      // pse's not-found error, naming the failed file (raw path)
+      expect(err.message).toContain("Text not found in f2.ts");
+      expect(err.editError).toBeDefined();
+      expect(err.editError!.kind).toBe("not-found");
+
+      // Gate consulted only for the first file
+      expect(calls).toHaveLength(1);
+      expect(calls[0].content).toBe(MF_F1_APPLIED);
     });
   });
 });

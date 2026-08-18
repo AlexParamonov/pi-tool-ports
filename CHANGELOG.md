@@ -9,3 +9,4 @@
 - Gated write tool: validates content against the path's extension before any I/O; blocked calls throw with parity diagnostics and zero filesystem side effects; clean calls delegate to the built-in write unchanged.
 - Gate: unknown extensions short-circuit before consulting the grammar seam (AC4 fix).
 - Gate: added delimiter-only extension tests and full decision-table matrix test (AC5, AC7).
+- Tests: wave 2 acceptance tests — multi-file edit parity (R15: first-seen order, blocked file byte-identical, earlier files already written, per-file gate pass, no-match parity) and load failure (US-12: zero registrations when either tool construction fails, unresolvable deep import rejects at load before the module body runs).
