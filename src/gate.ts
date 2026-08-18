@@ -165,22 +165,12 @@ export async function validateContent(
         content,
       );
       if (errors.length > 0) {
+        let balanceErr: string | null = null;
         if (rules) {
-          const balanceErr = checkDelimiterBalance(path, content, rules);
+          balanceErr = checkDelimiterBalance(path, content, rules);
           if (balanceErr === null) {
             return null;
           }
-          let msg =
-            "Syntax check failed for " +
-            path +
-            ": " +
-            errors.length +
-            " error(s) detected by tree-sitter.\n";
-          msg +=
-            "Delimiter balance also reports issues:\n  " + balanceErr + "\n";
-          msg += GUARD_MSG;
-          msg += formatErrors(errors);
-          return msg;
         }
         let msg =
           "Syntax check failed for " +
@@ -188,6 +178,10 @@ export async function validateContent(
           ": " +
           errors.length +
           " error(s) detected by tree-sitter.\n";
+        if (balanceErr) {
+          msg +=
+            "Delimiter balance also reports issues:\n  " + balanceErr + "\n";
+        }
         msg += GUARD_MSG;
         msg += formatErrors(errors);
         return msg;
