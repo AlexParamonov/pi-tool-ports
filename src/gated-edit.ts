@@ -89,6 +89,7 @@ export function createGatedEditTool(cwd: string, opts?: GatedToolOptions) {
   const base = createRobustEditTool(cwd, stub);
   const { execute: _baseExecute, ...surface } = base;
   const grammar = opts?.grammar;
+  const excludePatterns = opts?.exclude?.patterns ?? [];
 
   const execute = async (
     _toolCallId: string,
@@ -187,7 +188,9 @@ export function createGatedEditTool(cwd: string, opts?: GatedToolOptions) {
         }
 
         // Coherence warnings (non-blocking)
-        const warnings = coherenceCheck(result.content);
+        const warnings = coherenceCheck(result.content).filter(
+          (w) => !excludePatterns.some((p) => w.includes(p)),
+        );
 
         // Atomic write: temp file + rename
         const tmpPath = resolve(dirname(absolutePath), `.${randomUUID()}.tmp`);

@@ -28,6 +28,9 @@ export type GrammarFn = (
 /** Options shared by both gated edit and gated write tools. */
 export interface GatedToolOptions {
   grammar?: GrammarFn;
+  exclude?: {
+    patterns?: string[];
+  };
 }
 
 // ── Gate error contract ─────────────────────────────────────────────

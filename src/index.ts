@@ -7,6 +7,7 @@ import {
 import type { NotifyFn } from "pi-tree-sitter/src/grammar";
 import { Parser } from "web-tree-sitter";
 
+import { loadConfig } from "./config/config-io";
 import { createGatedEditTool } from "./gated-edit";
 import { createGatedWriteTool } from "./gated-write";
 import type { GrammarResult } from "./types";
@@ -20,6 +21,7 @@ export default async function extensionFactory(
   pi: ExtensionAPI,
 ): Promise<void> {
   const cwd = process.cwd();
+  const config = loadConfig();
 
   // Default grammar seam: loads tree-sitter WASM grammars via pts.
   // Lazy — no prefetch; CDN download on first validated call per language.
@@ -43,7 +45,7 @@ export default async function extensionFactory(
 
   const { surface: editSurface, execute: editExecute } = createGatedEditTool(
     cwd,
-    { grammar: defaultGrammar },
+    { grammar: defaultGrammar, exclude: config.exclude },
   );
 
   const { surface: writeSurface, execute: writeExecute } = createGatedWriteTool(
