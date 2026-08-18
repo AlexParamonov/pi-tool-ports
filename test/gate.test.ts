@@ -1,13 +1,13 @@
 // Acceptance tests for the validator (wave 1, slice 1.2).
 //
-// `validateContent` is the driving port of the gate: tests pin the full
+// `validateSyntax` is the driving port of the gate: tests pin the full
 // decision table and the byte-parity message contract (the three templates
 // and per-error rendering from the spec, byte-for-byte from pi-tree-sitter).
 // The grammar seam is faked — no WASM, no CDN, no cache in unit tests.
 
 import { describe, expect, test } from "vitest";
 
-import { validateContent } from "../src/gate";
+import { validateSyntax } from "../src/gates/syntax";
 import type { GrammarFn } from "../src/types";
 import {
   cleanFakeTree,
@@ -35,19 +35,19 @@ describe("gate: passing content", () => {
       available: true,
       tree: cleanFakeTree(),
     });
-    const result = await validateContent("a.ts", "const x = 1;\n", grammar);
+    const result = await validateSyntax("a.ts", "const x = 1;\n", grammar);
     expect(result).toBeNull();
   });
 
   test("passes content when the grammar is unavailable and the extension has no delimiter rules", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.ts", BROKEN_TS, grammar);
+    const result = await validateSyntax("a.ts", BROKEN_TS, grammar);
     expect(result).toBeNull();
   });
 
   test("passes content when the grammar is available but the parse produced no tree", async () => {
     const { grammar } = recordingGrammar({ available: true, tree: null });
-    const result = await validateContent("a.ts", BROKEN_TS, grammar);
+    const result = await validateSyntax("a.ts", BROKEN_TS, grammar);
     expect(result).toBeNull();
   });
 
@@ -56,7 +56,7 @@ describe("gate: passing content", () => {
       available: true,
       tree: cleanFakeTree(),
     });
-    const result = await validateContent("README", "const x = ;\n", grammar);
+    const result = await validateSyntax("README", "const x = ;\n", grammar);
     expect(result).toBeNull();
     expect(calls).toEqual([]);
   });
@@ -66,7 +66,7 @@ describe("gate: passing content", () => {
       available: false,
       tree: null,
     });
-    const result = await validateContent("data.xyz", "const x = ;\n", grammar);
+    const result = await validateSyntax("data.xyz", "const x = ;\n", grammar);
     expect(result).toBeNull();
     expect(calls).toEqual([]);
   });
@@ -78,7 +78,7 @@ describe("gate: blocking on grammar errors (no delimiter rules)", () => {
       available: true,
       tree: makeFakeTree([BROKEN_NODE]),
     });
-    const result = await validateContent("a.ts", BROKEN_TS, grammar);
+    const result = await validateSyntax("a.ts", BROKEN_TS, grammar);
     expect(result).toBe(SINGLE_ERROR_MESSAGE);
   });
 
@@ -96,7 +96,7 @@ describe("gate: blocking on grammar errors (no delimiter rules)", () => {
       available: true,
       tree: makeFakeTree([missingBrace]),
     });
-    const result = await validateContent("a.ts", content, grammar);
+    const result = await validateSyntax("a.ts", content, grammar);
     const expected =
       "Syntax check failed for a.ts: 1 error(s) detected by tree-sitter.\n" +
       "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
@@ -121,7 +121,7 @@ describe("gate: blocking on grammar errors (no delimiter rules)", () => {
       available: true,
       tree: makeFakeTree([strayCloser]),
     });
-    const result = await validateContent("a.ts", content, grammar);
+    const result = await validateSyntax("a.ts", content, grammar);
     const expected =
       "Syntax check failed for a.ts: 1 error(s) detected by tree-sitter.\n" +
       "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
@@ -157,7 +157,7 @@ describe("gate: blocking on grammar errors (no delimiter rules)", () => {
       available: true,
       tree: makeFakeTree(nested),
     });
-    const result = await validateContent("a.ts", content, grammar);
+    const result = await validateSyntax("a.ts", content, grammar);
     const expected =
       "Syntax check failed for a.ts: 1 error(s) detected by tree-sitter.\n" +
       "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
@@ -182,7 +182,7 @@ describe("gate: blocking on grammar errors (no delimiter rules)", () => {
       available: true,
       tree: makeFakeTree(nodes),
     });
-    const result = await validateContent("a.ts", content, grammar);
+    const result = await validateSyntax("a.ts", content, grammar);
     const blocks = Array.from({ length: 10 }, (_, i) => {
       const line = i + 1;
       return (
@@ -229,7 +229,7 @@ describe("gate: Lisp-like double confirmation", () => {
       available: true,
       tree: makeFakeTree([CLJ_ERROR_NODE]),
     });
-    const result = await validateContent("a.clj", BALANCED_CLJ, grammar);
+    const result = await validateSyntax("a.clj", BALANCED_CLJ, grammar);
     expect(result).toBeNull();
   });
 
@@ -238,7 +238,7 @@ describe("gate: Lisp-like double confirmation", () => {
       available: true,
       tree: makeFakeTree([CLJ_MISSING_NODE]),
     });
-    const result = await validateContent("a.clj", UNBALANCED_CLJ, grammar);
+    const result = await validateSyntax("a.clj", UNBALANCED_CLJ, grammar);
     const expected =
       "Syntax check failed for a.clj: 1 error(s) detected by tree-sitter.\n" +
       "Delimiter balance also reports issues:\n" +
@@ -253,7 +253,7 @@ describe("gate: Lisp-like double confirmation", () => {
 
   test("blocks on delimiter imbalance alone when the grammar is unavailable", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.clj", UNBALANCED_CLJ, grammar);
+    const result = await validateSyntax("a.clj", UNBALANCED_CLJ, grammar);
     const expected =
       "Syntax check failed for a.clj: delimiters are unbalanced.\n" +
       "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
@@ -263,7 +263,7 @@ describe("gate: Lisp-like double confirmation", () => {
 
   test("passes when the grammar is unavailable and delimiters balance", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.clj", BALANCED_CLJ, grammar);
+    const result = await validateSyntax("a.clj", BALANCED_CLJ, grammar);
     expect(result).toBeNull();
   });
 });
@@ -276,7 +276,7 @@ describe("gate: delimiter-only extensions", () => {
 
   test("blocks unbalanced content when grammar is unavailable", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.edn", UNBALANCED_EDN, grammar);
+    const result = await validateSyntax("a.edn", UNBALANCED_EDN, grammar);
     const expected =
       "Syntax check failed for a.edn: delimiters are unbalanced.\n" +
       "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
@@ -286,19 +286,19 @@ describe("gate: delimiter-only extensions", () => {
 
   test("passes balanced content when grammar is unavailable", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.edn", BALANCED_EDN, grammar);
+    const result = await validateSyntax("a.edn", BALANCED_EDN, grammar);
     expect(result).toBeNull();
   });
 
   test("passes balanced .fnl content when grammar is unavailable", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.fnl", "(print 1)\n", grammar);
+    const result = await validateSyntax("a.fnl", "(print 1)\n", grammar);
     expect(result).toBeNull();
   });
 
   test("blocks unbalanced .fnl content when grammar is unavailable", async () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
-    const result = await validateContent("a.fnl", "(print 1", grammar);
+    const result = await validateSyntax("a.fnl", "(print 1", grammar);
     expect(result).toContain("delimiters are unbalanced");
     expect(result).toContain("NOT modified");
   });
@@ -483,7 +483,7 @@ describe("gate: decision-table matrix", () => {
   for (const c of cases) {
     test(c.label, async () => {
       const grammar = grammarFor(c.grammarState, c.ext);
-      const result = await validateContent(c.ext, c.content, grammar);
+      const result = await validateSyntax(c.ext, c.content, grammar);
       if (c.expected === "pass") {
         expect(result).toBeNull();
       } else {
@@ -498,7 +498,7 @@ describe("gate: decision-table matrix", () => {
       available: true,
       tree: makeFakeTree([TS_ERROR_NODE]),
     });
-    const result = await validateContent("data.xyz", BROKEN_TS, grammar);
+    const result = await validateSyntax("data.xyz", BROKEN_TS, grammar);
     expect(result).toBeNull();
     expect(calls).toEqual([]);
   });
@@ -508,7 +508,7 @@ describe("gate: decision-table matrix", () => {
       available: true,
       tree: makeFakeTree([TS_ERROR_NODE]),
     });
-    const result = await validateContent("README", BROKEN_TS, grammar);
+    const result = await validateSyntax("README", BROKEN_TS, grammar);
     expect(result).toBeNull();
     expect(calls).toEqual([]);
   });

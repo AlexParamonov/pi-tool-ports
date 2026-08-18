@@ -42,7 +42,7 @@ import type {
   EditRequestLike,
 } from "../adapters/semantic-edit";
 
-import { validateContent } from "../gate";
+import { validateSyntax } from "../gates/syntax";
 import { gateBlockError, type GatedToolOptions } from "../types";
 
 // --- Throw an Error carrying a structured EditError (for renderers/debugging) ---
@@ -177,7 +177,7 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
         const finalContent = bom + restoreLineEndings(result.content, ending);
 
         // GATE: validate write-form bytes before any write
-        const blockMessage = await validateContent(
+        const blockMessage = await validateSyntax(
           group.path,
           finalContent,
           grammar,

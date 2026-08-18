@@ -11,9 +11,9 @@ import {
   BALANCE_RULES,
   checkDelimiterBalance,
   LANGUAGE_MAP,
-} from "./adapters/tree-sitter";
+} from "../adapters/tree-sitter";
 
-import type { GrammarFn } from "./types";
+import type { GrammarFn } from "../types";
 
 // ── Error collection (byte-for-byte from pi-tree-sitter/index.ts) ──────
 
@@ -140,7 +140,7 @@ function collectErrors(tree: { rootNode: NodeLike }, source: string): string[] {
  * The grammar seam is injectable: unit tests inject fakes that return
  * predetermined parse trees without WASM, CDN, or cache access.
  */
-export async function validateContent(
+export async function validateSyntax(
   path: string,
   content: string,
   grammar?: GrammarFn,
