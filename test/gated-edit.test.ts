@@ -1,6 +1,6 @@
 // Acceptance tests for the gated edit tool (wave 1, slice 1.3).
 //
-// Drives `createGatedEditTool().execute` against a real temp-dir filesystem
+// Drives `createEditPort().execute` against a real temp-dir filesystem
 // with fake parse trees. No WASM, no CDN, no cache in unit tests.
 
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -10,7 +10,7 @@ import { describe, expect, test } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
-import { createGatedEditTool } from "../src/gated-edit";
+import { createEditPort } from "../src/ports/edit";
 import {
   captureBlock,
   makeFakeTree,
@@ -51,7 +51,7 @@ function createTool(
   const { execute: _baseExec, ...surface } = base;
   return {
     ...surface,
-    execute: createGatedEditTool(cwd, { grammar: grammarFn }).execute,
+    execute: createEditPort(cwd, { grammar: grammarFn }).execute,
   };
 }
 
@@ -397,7 +397,7 @@ describe("gated edit: non-syntax pse error contract", () => {
       // Run the oracle (pse's own execute) for comparison
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createGatedEditTool(dir, { grammar });
+      const host = createEditPort(dir, { grammar });
 
       const input = {
         path: "a.ts",
@@ -442,7 +442,7 @@ describe("gated edit: non-syntax pse error contract", () => {
 
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createGatedEditTool(dir, { grammar });
+      const host = createEditPort(dir, { grammar });
 
       const input = {
         path: "a.ts",
@@ -501,7 +501,7 @@ describe("gated edit: non-syntax pse error contract", () => {
 
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createGatedEditTool(dir, { grammar });
+      const host = createEditPort(dir, { grammar });
 
       const input = {
         path: "nonexistent.ts",

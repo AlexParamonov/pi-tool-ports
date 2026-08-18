@@ -8,8 +8,8 @@ import type { NotifyFn } from "pi-tree-sitter/src/grammar";
 import { Parser } from "web-tree-sitter";
 
 import { loadConfig } from "./config/config-io";
-import { createGatedEditTool } from "./gated-edit";
-import { createGatedWriteTool } from "./gated-write";
+import { createEditPort } from "./ports/edit";
+import { createWritePort } from "./ports/write";
 import type { GrammarResult } from "./types";
 
 /**
@@ -43,24 +43,13 @@ export default async function extensionFactory(
     return { available: true, tree };
   };
 
-  const { surface: editSurface, execute: editExecute } = createGatedEditTool(
-    cwd,
-    { grammar: defaultGrammar, exclude: config.exclude },
-  );
-
-  const { surface: writeSurface, execute: writeExecute } = createGatedWriteTool(
-    cwd,
-    { grammar: defaultGrammar },
-  );
-
-  // Register after both definitions are fully constructed.
-  pi.registerTool({
-    ...editSurface,
-    execute: editExecute,
+  const editPort = createEditPort(cwd, {
+    grammar: defaultGrammar,
+    exclude: config.exclude,
   });
+  const writePort = createWritePort(cwd, { grammar: defaultGrammar });
 
-  pi.registerTool({
-    ...writeSurface,
-    execute: writeExecute,
-  });
+  // Register ports.
+  pi.registerTool({ ...editPort.surface, execute: editPort.execute });
+  pi.registerTool({ ...writePort.surface, execute: writePort.execute });
 }

@@ -1,8 +1,5 @@
 /**
- * Gated edit tool — a faithful port of pse's execute with one inserted step:
- * validate post-apply write-form bytes via the injectable grammar seam before
- * writing. On block: throw parity error, leave file byte-identical. On clean:
- * atomic write + pse's exact success shape.
+ * Edit port — fuzzy matching via pi-semantic-edit with syntax validation gate.
  *
  * Tool surface captured from createRobustEditTool; only execute is swapped.
  */
@@ -43,8 +40,8 @@ import { normalizeEditArgs } from "pi-semantic-edit/src/pi/normalize";
 import type { EditRequestLike } from "pi-semantic-edit/src/pi/normalize";
 import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
-import { validateContent } from "./gate";
-import { gateBlockError, type GatedToolOptions } from "./types";
+import { validateContent } from "../gate";
+import { gateBlockError, type GatedToolOptions } from "../types";
 
 // --- Throw an Error carrying a structured EditError (for renderers/debugging) ---
 function toolError(error: EditError): Error {
@@ -80,11 +77,11 @@ function groupByPath(blocks: EditRequestLike[]): FileGroup[] {
 }
 
 /**
- * Create the gated edit tool. Captures every surface field from pse's
+ * Create the edit port. Captures every surface field from pse's
  * createRobustEditTool unchanged; only execute is swapped for the gated
  * implementation.
  */
-export function createGatedEditTool(cwd: string, opts?: GatedToolOptions) {
+export function createEditPort(cwd: string, opts?: GatedToolOptions) {
   const stub = {} as unknown as ExtensionAPI;
   const base = createRobustEditTool(cwd, stub);
   const { execute: _baseExecute, ...surface } = base;

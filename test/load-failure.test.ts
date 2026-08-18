@@ -39,13 +39,13 @@ const construction = vi.hoisted(() => ({
   failWrite: false,
 }));
 
-vi.mock("../src/gated-edit", async (importOriginal) => {
+vi.mock("../src/ports/edit", async (importOriginal) => {
   const original =
-    (await importOriginal()) as typeof import("../src/gated-edit");
-  const realCreate = original.createGatedEditTool;
+    (await importOriginal()) as typeof import("../src/ports/edit");
+  const realCreate = original.createEditPort;
   return {
     ...original,
-    createGatedEditTool: (...args: Parameters<typeof realCreate>) => {
+    createEditPort: (...args: Parameters<typeof realCreate>) => {
       if (construction.failEdit) {
         throw new Error("simulated edit construction failure");
       }
@@ -54,13 +54,13 @@ vi.mock("../src/gated-edit", async (importOriginal) => {
   };
 });
 
-vi.mock("../src/gated-write", async (importOriginal) => {
+vi.mock("../src/ports/write", async (importOriginal) => {
   const original =
-    (await importOriginal()) as typeof import("../src/gated-write");
-  const realCreate = original.createGatedWriteTool;
+    (await importOriginal()) as typeof import("../src/ports/write");
+  const realCreate = original.createWritePort;
   return {
     ...original,
-    createGatedWriteTool: (...args: Parameters<typeof realCreate>) => {
+    createWritePort: (...args: Parameters<typeof realCreate>) => {
       if (construction.failWrite) {
         throw new Error("simulated write construction failure");
       }

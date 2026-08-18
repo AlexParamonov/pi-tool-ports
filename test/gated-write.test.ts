@@ -13,7 +13,7 @@ import { describe, expect, test } from "vitest";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
-import { createGatedWriteTool } from "../src/gated-write";
+import { createWritePort } from "../src/ports/write";
 import {
   brokenGrammar,
   captureBlock,
@@ -44,7 +44,7 @@ const VALID_TS_CONTENT = "const x = 1;\nconsole.log(x);\n";
 describe("gated-write: surface equality", () => {
   test("name, description, parameters match the built-in definition", () => {
     const cwd = process.cwd();
-    const { surface } = createGatedWriteTool(cwd);
+    const { surface } = createWritePort(cwd);
     const builtin = createWriteToolDefinition(cwd);
 
     expect(surface.name).toBe(builtin.name);
@@ -58,7 +58,7 @@ describe("gated-write: blocked writes (zero side effects)", () => {
   test("blocks broken TS content; no file and no parent directory created", async () => {
     await withTempDir(async (dir) => {
       const { grammar } = brokenGrammar();
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
       const targetPath = join(dir, "a.ts");
 
       const err = await captureBlock(
@@ -91,7 +91,7 @@ describe("gated-write: blocked writes (zero side effects)", () => {
   test("blocks broken content in a nested path; no file and no parent dirs created", async () => {
     await withTempDir(async (dir) => {
       const { grammar } = brokenGrammar();
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
 
       const err = await captureBlock(
         execute(
@@ -117,7 +117,7 @@ describe("gated-write: valid writes", () => {
   test("writes valid content verbatim with built-in success text", async () => {
     await withTempDir(async (dir) => {
       const { grammar } = cleanGrammar();
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
       const targetPath = join(dir, "b.ts");
 
       const result = await execute(
@@ -140,7 +140,7 @@ describe("gated-write: valid writes", () => {
   test("creates parent directories as needed", async () => {
     await withTempDir(async (dir) => {
       const { grammar } = cleanGrammar();
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
 
       const result = await execute(
         "call-1",
@@ -163,7 +163,7 @@ describe("gated-write: pass-through rules", () => {
   test("passes writes to extensionless paths without validation", async () => {
     await withTempDir(async (dir) => {
       const { grammar, calls } = brokenGrammar(); // grammar would block if consulted
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
       const content = "readme content";
 
       const result = await execute(
@@ -185,7 +185,7 @@ describe("gated-write: pass-through rules", () => {
   test("passes writes when grammar is unavailable (seam returns null)", async () => {
     await withTempDir(async (dir) => {
       const { grammar } = unavailableGrammar();
-      const { execute } = createGatedWriteTool(dir, { grammar });
+      const { execute } = createWritePort(dir, { grammar });
       const content = "const x = ;\n"; // broken, but grammar unavailable → pass-through
 
       const result = await execute(
@@ -208,7 +208,7 @@ describe("gated-write: cwd-quirk pin", () => {
     await withTempDir(async (dirA) => {
       await withTempDir(async (dirB) => {
         const { grammar } = cleanGrammar();
-        const { execute } = createGatedWriteTool(dirB, { grammar });
+        const { execute } = createWritePort(dirB, { grammar });
         const content = "const z = 1;\n";
 
         const result = await execute(
@@ -234,7 +234,7 @@ describe("gated-write: cwd-quirk pin", () => {
     await withTempDir(async (dirA) => {
       await withTempDir(async (dirB) => {
         const { grammar } = brokenGrammar(); // would block .ts content
-        const { execute } = createGatedWriteTool(dirB, { grammar });
+        const { execute } = createWritePort(dirB, { grammar });
         const content = BROKEN_TS_CONTENT;
 
         const err = await captureBlock(

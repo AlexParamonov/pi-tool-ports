@@ -1,8 +1,7 @@
 /**
- * Gated write tool: validate before any I/O, zero side effects on block,
- * clean calls delegate to the built-in write unchanged.
+ * Write port — validates content against file extension before write.
+ * Clean calls delegate to the built-in write unchanged.
  */
-
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,8 +11,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
-import { validateContent } from "./gate";
-import { gateBlockError, type GatedToolOptions } from "./types";
+import { validateContent } from "../gate";
+import { gateBlockError, type GatedToolOptions } from "../types";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -42,9 +41,9 @@ function builtinResolveToCwd(filePath: string, cwd: string): string {
     : resolve(cwd, normalized);
 }
 
-// ── Gated write tool factory ──────────────────────────────────────────
+// ── Write port factory ──────────────────────────────────────────────────
 
-export function createGatedWriteTool(cwd: string, options?: GatedToolOptions) {
+export function createWritePort(cwd: string, options?: GatedToolOptions) {
   const grammar = options?.grammar;
   const builtinDef = createWriteToolDefinition(cwd);
   const { execute: _baseExecute, ...surface } = builtinDef;
