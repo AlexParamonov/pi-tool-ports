@@ -12,6 +12,9 @@
     "edit",
     "write",
     "syntax-validation",
+    "syntax",
+    "validation",
+    "linter",
     "ai"
   ],
   "author": "AlexParamonov",
