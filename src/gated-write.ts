@@ -11,7 +11,10 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentToolUpdateCallback,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import { validateContent } from "./gate";
@@ -75,8 +78,8 @@ export function createGatedWriteTool(
     toolCallId: string,
     { path, content }: { path: string; content: string },
     signal: AbortSignal | undefined,
-    onUpdate: (() => void) | undefined,
-    ctx: ExtensionContext | undefined,
+    onUpdate: AgentToolUpdateCallback | undefined,
+    ctx: ExtensionContext,
   ) => {
     const baseCwd = ctx?.cwd ?? cwd;
     const absolutePath = builtinResolveToCwd(path, baseCwd);
@@ -93,8 +96,8 @@ export function createGatedWriteTool(
       toolCallId,
       { path, content },
       signal,
-      onUpdate as never,
-      ctx as never,
+      onUpdate,
+      ctx,
     );
   };
 

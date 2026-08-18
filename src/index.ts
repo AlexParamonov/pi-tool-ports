@@ -1,4 +1,7 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 
 import { createGatedEditTool } from "./gated-edit";
 import { createGatedWriteTool } from "./gated-write";
@@ -20,13 +23,14 @@ export default async function extensionFactory(
     createGatedWriteTool(cwd);
 
   // Register after both definitions are fully constructed.
+  // The captured surface fields align structurally with ToolDefinition.
   pi.registerTool({
     ...editSurface,
     execute: editExecute,
-  } as never);
+  });
 
   pi.registerTool({
     ...writeSurface,
     execute: writeExecute,
-  } as never);
+  } as ToolDefinition);
 }

@@ -10,6 +10,7 @@ import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import { createGatedWriteTool } from "../src/gated-write";
@@ -20,6 +21,11 @@ import {
   unavailableGrammar,
   withTempDir,
 } from "./helpers";
+
+// Minimal ExtensionContext stub — tests only need cwd from ctx.
+function stubCtx(cwd: string): ExtensionContext {
+  return { cwd } as ExtensionContext;
+}
 
 // Built-in success text: "Successfully wrote N bytes to {path}"
 function successText(content: string, path: string) {
@@ -61,7 +67,7 @@ describe("gated-write: blocked writes (zero side effects)", () => {
           { path: "a.ts", content: BROKEN_TS_CONTENT },
           undefined,
           undefined,
-          undefined,
+          stubCtx(dir),
         ),
       );
 
@@ -93,7 +99,7 @@ describe("gated-write: blocked writes (zero side effects)", () => {
           { path: "sub/dir/a.ts", content: BROKEN_TS_CONTENT },
           undefined,
           undefined,
-          undefined,
+          stubCtx(dir),
         ),
       );
 
@@ -119,7 +125,7 @@ describe("gated-write: valid writes", () => {
         { path: "b.ts", content: VALID_TS_CONTENT },
         undefined,
         undefined,
-        undefined,
+        stubCtx(dir),
       );
 
       expect(extractText(result).text).toBe(
@@ -141,7 +147,7 @@ describe("gated-write: valid writes", () => {
         { path: "nested/deep/file.ts", content: VALID_TS_CONTENT },
         undefined,
         undefined,
-        undefined,
+        stubCtx(dir),
       );
 
       expect(extractText(result).text).toBe(
@@ -165,7 +171,7 @@ describe("gated-write: pass-through rules", () => {
         { path: "README", content },
         undefined,
         undefined,
-        undefined,
+        stubCtx(dir),
       );
 
       // Grammar was never consulted (extensionless path)
@@ -187,7 +193,7 @@ describe("gated-write: pass-through rules", () => {
         { path: "a.ts", content },
         undefined,
         undefined,
-        undefined,
+        stubCtx(dir),
       );
 
       expect(extractText(result).text).toBe(successText(content, "a.ts"));
@@ -210,7 +216,7 @@ describe("gated-write: cwd-quirk pin", () => {
           { path: "session.ts", content },
           undefined,
           undefined,
-          { cwd: dirA } as never,
+          stubCtx(dirA),
         );
 
         expect(extractText(result).text).toBe(
@@ -237,7 +243,7 @@ describe("gated-write: cwd-quirk pin", () => {
             { path: "target.ts", content },
             undefined,
             undefined,
-            { cwd: dirA } as never,
+            stubCtx(dirA),
           ),
         );
 

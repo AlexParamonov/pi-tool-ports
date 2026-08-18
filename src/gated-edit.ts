@@ -31,7 +31,7 @@ import {
   validationError,
 } from "pi-semantic-edit/src/domain/errors";
 import { MalformedPatchError } from "pi-semantic-edit/src/domain/parser";
-import type { EditError } from "pi-semantic-edit/src/domain/types";
+import type { EditError, EditRequest } from "pi-semantic-edit/src/domain/types";
 import {
   detectLineEnding,
   normalizeNewlines,
@@ -169,7 +169,11 @@ export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
         const content = normalizeNewlines(text);
 
         // Apply edits (pse's fuzzy chain; no-match/ambiguous → pse errors)
-        const result = applyBlocks(content, group.blocks as never, group.path);
+        const result = applyBlocks(
+          content,
+          group.blocks as EditRequest[],
+          group.path,
+        );
         if (!result.ok || result.content === undefined) {
           throw toolError(result.error! as EditError);
         }
