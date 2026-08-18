@@ -44,7 +44,7 @@ import type { EditRequestLike } from "pi-semantic-edit/src/pi/normalize";
 import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
 import { validateContent } from "./gate";
-import type { GrammarFn } from "./types";
+import { gateBlockError, type GrammarFn } from "./types";
 
 // --- Throw an Error carrying a structured EditError (for renderers/debugging) ---
 function toolError(error: EditError): Error {
@@ -184,9 +184,7 @@ export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
           grammar,
         );
         if (blockMessage !== null) {
-          throw Object.assign(new Error(blockMessage), {
-            editError: { kind: "syntax" as const, message: blockMessage },
-          });
+          throw gateBlockError(blockMessage);
         }
 
         // Coherence warnings (non-blocking)

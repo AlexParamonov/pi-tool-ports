@@ -15,7 +15,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import { validateContent } from "./gate";
-import type { GrammarFn } from "./types";
+import { gateBlockError, type GrammarFn } from "./types";
 
 // ── Path resolution (ported from pi-coding-agent's path-utils) ────────
 // pi-coding-agent's exports map blocks deep imports. This is a minimal
@@ -84,10 +84,7 @@ export function createGatedWriteTool(
     // GATE before any I/O: validate the exact content against the resolved path
     const blockMessage = await validateContent(absolutePath, content, grammar);
     if (blockMessage !== null) {
-      const err = Object.assign(new Error(blockMessage), {
-        editError: { kind: "syntax" as const, message: blockMessage },
-      });
-      throw err;
+      throw gateBlockError(blockMessage);
     }
 
     // Clean: delegate to the built-in execute with the same baseCwd

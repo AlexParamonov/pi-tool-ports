@@ -27,3 +27,17 @@ export type GrammarFn = (
   content: string,
   notify?: NotifyFn,
 ) => Promise<GrammarResult>;
+
+// ── Gate error contract ─────────────────────────────────────────────
+
+/** Structured error a blocked tool call carries (for renderers/debugging). */
+export interface GateBlockError extends Error {
+  editError: { kind: "syntax"; message: string };
+}
+
+/** Create a gate-block error from a parity message. */
+export function gateBlockError(message: string): GateBlockError {
+  return Object.assign(new Error(message), {
+    editError: { kind: "syntax" as const, message },
+  });
+}
