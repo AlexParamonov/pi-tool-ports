@@ -20,7 +20,7 @@ import {
   formatError,
   collectErrors,
   MAX_ERRORS,
-} from "./tree-sitter/internal";
+} from "./tree-sitter/exports.js";
 
 // Re-export everything used by gate.ts and index.ts
 export {

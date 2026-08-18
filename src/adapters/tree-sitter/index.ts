@@ -6,7 +6,7 @@
  *
  * Exported symbols come from two sources:
  * 1. Public exports from pi-tree-sitter (BALANCE_RULES, LANGUAGE_MAP, etc.)
- * 2. Internal symbols accessed via internal.ts hack (MAX_ERRORS, lineAt, etc.)
+ * 2. Internal symbols re-exported from vendored pi-tree-sitter (MAX_ERRORS, lineAt, etc.)
  */
 import {
   BALANCE_RULES,
@@ -19,8 +19,8 @@ import {
 } from "pi-tree-sitter/src/grammar";
 import type { NotifyFn } from "pi-tree-sitter/src/grammar";
 
-// Internal symbols accessed via hack
-import * as internals from "./internal";
+// Internal symbols from vendor
+import * as internals from "./exports.js";
 
 // Re-export public symbols
 export {
