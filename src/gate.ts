@@ -18,6 +18,22 @@ import type { GrammarFn } from "./types";
 
 const MAX_ERRORS = 10;
 
+/** The guard message appended to every blocked-call diagnostic. */
+const GUARD_MSG =
+  "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
+
+/** Format a list of error diagnostics, capping at MAX_ERRORS. */
+function formatErrors(errors: string[]): string {
+  let body = errors.join("\n");
+  if (errors.length >= MAX_ERRORS) {
+    body +=
+      "\n  \u2026(truncated at " +
+      MAX_ERRORS +
+      " errors; fix the listed issues and re-check)";
+  }
+  return body;
+}
+
 /** Return the line content that contains `offset`, for context. */
 function lineAt(source: string, offset: number): string {
   const start = source.lastIndexOf("\n", offset - 1) + 1;
@@ -162,15 +178,8 @@ export async function validateContent(
             " error(s) detected by tree-sitter.\n";
           msg +=
             "Delimiter balance also reports issues:\n  " + balanceErr + "\n";
-          msg +=
-            "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
-          msg += errors.join("\n");
-          if (errors.length >= MAX_ERRORS) {
-            msg +=
-              "\n  \u2026(truncated at " +
-              MAX_ERRORS +
-              " errors; fix the listed issues and re-check)";
-          }
+          msg += GUARD_MSG;
+          msg += formatErrors(errors);
           return msg;
         }
         let msg =
@@ -179,15 +188,8 @@ export async function validateContent(
           ": " +
           errors.length +
           " error(s) detected by tree-sitter.\n";
-        msg +=
-          "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
-        msg += errors.join("\n");
-        if (errors.length >= MAX_ERRORS) {
-          msg +=
-            "\n  \u2026(truncated at " +
-            MAX_ERRORS +
-            " errors; fix the listed issues and re-check)";
-        }
+        msg += GUARD_MSG;
+        msg += formatErrors(errors);
         return msg;
       }
     }
@@ -199,8 +201,7 @@ export async function validateContent(
     if (err) {
       let msg =
         "Syntax check failed for " + path + ": delimiters are unbalanced.\n";
-      msg +=
-        "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
+      msg += GUARD_MSG;
       msg += "  " + err;
       return msg;
     }
