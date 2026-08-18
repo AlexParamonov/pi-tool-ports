@@ -5,6 +5,8 @@
 // else registered) and US-13 (the model-facing tool surfaces are captured
 // unchanged from the libraries), plus the R14 deep-import surface smoke.
 
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -12,7 +14,11 @@ import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
 import extensionFactory from "../src/index";
-import { expectSameToolSurface, recordingExtensionApi } from "./helpers";
+import {
+  expectSameToolSurface,
+  recordingExtensionApi,
+  withTempDir,
+} from "./helpers";
 
 // Every input form the edit tool accepts (edits[], replaceAll, JSON-string
 // edits, legacy top-level oldText/newText, deprecated SEARCH/REPLACE patch).
@@ -73,6 +79,49 @@ test("edit prepareArguments normalizes every accepted input form like pse", asyn
       `prepareArguments(${JSON.stringify(input)})`,
     ).toEqual(reference.prepareArguments(input));
   }
+});
+
+test("registered edit tool executes the gated implementation, not a stub", async () => {
+  await withTempDir(async (dir) => {
+    const filePath = join(dir, "a.ts");
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(filePath, "const x = 1;\n");
+
+    const { registered } = await loadExtension();
+    const editTool = registered.find((tool) => tool.name === "edit") as {
+      execute: (
+        toolCallId: string,
+        input: unknown,
+        signal: AbortSignal | undefined,
+        onUpdate: unknown,
+        ctx: { cwd?: string } | undefined,
+      ) => Promise<unknown>;
+    };
+    expect(editTool, "edit tool registered").toBeDefined();
+
+    const result = await editTool.execute(
+      "call-1",
+      {
+        path: filePath,
+        edits: [{ oldText: "const x = 1;", newText: "const x = 2;" }],
+      },
+      undefined,
+      undefined,
+      { cwd: dir },
+    );
+
+    // The gated edit tool returns content + details on success.
+    const response = result as {
+      content: { type: string; text: string }[];
+      details: { diff: string };
+    };
+    expect(response.content[0].text).toContain("Successfully replaced");
+    expect(response.details.diff).toContain("const x = 2;");
+
+    // File was actually modified on disk.
+    const written = await readFile(filePath, "utf-8");
+    expect(written).toBe("const x = 2;\n");
+  });
 });
 
 test("registers a write tool whose surface is unchanged from the built-in", async () => {

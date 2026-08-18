@@ -87,174 +87,160 @@ export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
   const { execute: _baseExecute, ...surface } = base;
   const grammar = opts?.grammar;
 
-  return {
-    ...surface,
-    async execute(
-      _toolCallId: string,
-      input: unknown,
-      signal: AbortSignal | undefined,
-      _onUpdate: unknown,
-      ctx: { cwd?: string } | undefined,
-    ) {
-      const throwIfAborted = () => {
-        if (signal?.aborted) throw new Error("Operation aborted");
-      };
+  const execute = async (
+    _toolCallId: string,
+    input: unknown,
+    signal: AbortSignal | undefined,
+    _onUpdate: unknown,
+    ctx: { cwd?: string } | undefined,
+  ) => {
+    const throwIfAborted = () => {
+      if (signal?.aborted) throw new Error("Operation aborted");
+    };
 
-      // Session cwd, not the extension-load cwd
-      const baseCwd = ctx?.cwd ?? cwd;
+    // Session cwd, not the extension-load cwd
+    const baseCwd = ctx?.cwd ?? cwd;
 
-      let blocks: EditRequestLike[] | null;
-      try {
-        blocks = normalizeEditArgs(input);
-      } catch (err) {
-        if (err instanceof MalformedPatchError) {
-          throw toolError(malformedPatchError(err.message, err.index));
-        }
-        throw err;
+    let blocks: EditRequestLike[] | null;
+    try {
+      blocks = normalizeEditArgs(input);
+    } catch (err) {
+      if (err instanceof MalformedPatchError) {
+        throw toolError(malformedPatchError(err.message, err.index));
       }
-      if (!blocks || blocks.length === 0) {
-        throw toolError(
-          validationError(
-            "No edits found. Provide path and edits[] with oldText/newText pairs.",
-          ),
-        );
-      }
-      if (blocks.some((b) => !b.path)) {
-        throw toolError(missingPathError());
-      }
+      throw err;
+    }
+    if (!blocks || blocks.length === 0) {
+      throw toolError(
+        validationError(
+          "No edits found. Provide path and edits[] with oldText/newText pairs.",
+        ),
+      );
+    }
+    if (blocks.some((b) => !b.path)) {
+      throw toolError(missingPathError());
+    }
 
-      const summaries: string[] = [];
-      const matchPasses: string[] = [];
-      let primaryDiff = "";
-      let primaryPatch = "";
-      let primaryFirstChangedLine = 0;
+    const summaries: string[] = [];
+    const matchPasses: string[] = [];
+    let primaryDiff = "";
+    let primaryPatch = "";
+    let primaryFirstChangedLine = 0;
 
-      for (const group of groupByPath(blocks)) {
-        const absolutePath = resolveToCwd(group.path, baseCwd);
+    for (const group of groupByPath(blocks)) {
+      const absolutePath = resolveToCwd(group.path, baseCwd);
+      throwIfAborted();
+
+      const fileResult = await withFileMutationQueue(absolutePath, async () => {
         throwIfAborted();
 
-        const fileResult = await withFileMutationQueue(
-          absolutePath,
-          async () => {
-            throwIfAborted();
-
-            // Read file
-            try {
-              await fsAccess(absolutePath, constants.R_OK | constants.W_OK);
-            } catch (err) {
-              const code =
-                err && typeof err === "object" && "code" in err
-                  ? `${(err as { code?: unknown }).code}`
-                  : String(err);
-              throw toolError(fileNotFoundError(`${group.path} (${code})`));
-            }
-
-            throwIfAborted();
-            let buffer: Buffer;
-            try {
-              buffer = await readFile(absolutePath);
-            } catch (err) {
-              const code =
-                err && typeof err === "object" && "code" in err
-                  ? `${(err as { code?: unknown }).code}`
-                  : String(err);
-              throw toolError(
-                validationError(
-                  `Could not read ${group.path} (${code}) — the file may have changed or been removed. Re-read the file and retry the edit.`,
-                ),
-              );
-            }
-
-            const rawContent = buffer.toString("utf-8");
-            const { bom, text } = stripBom(rawContent);
-            const ending = detectLineEnding(text);
-            const content = normalizeNewlines(text);
-
-            // Apply edits (pse's fuzzy chain; no-match/ambiguous → pse errors)
-            const result = applyBlocks(
-              content,
-              group.blocks as never,
-              group.path,
-            );
-            if (!result.ok || result.content === undefined) {
-              throw toolError(result.error! as EditError);
-            }
-
-            // Write-form bytes: BOM prepended, line endings restored
-            const finalContent =
-              bom + restoreLineEndings(result.content, ending);
-
-            // GATE: validate write-form bytes before any write
-            const blockMessage = await validateContent(
-              group.path,
-              finalContent,
-              grammar,
-            );
-            if (blockMessage !== null) {
-              const err = new Error(blockMessage) as Error & {
-                editError: { kind: string; message: string };
-              };
-              err.editError = { kind: "syntax", message: blockMessage };
-              throw err;
-            }
-
-            // Coherence warnings (non-blocking)
-            const warnings = coherenceCheck(result.content);
-
-            // Atomic write: temp file + rename
-            const tmpPath = resolve(
-              dirname(absolutePath),
-              `.${randomUUID()}.tmp`,
-            );
-            await writeFile(tmpPath, finalContent, "utf-8");
-            await rename(tmpPath, absolutePath);
-
-            const diffResult = generateDiffString(content, result.content);
-            return {
-              appliedCount: group.blocks.length,
-              replacements: result.replacements,
-              matchPasses: result.matchPasses,
-              diff: diffResult.diff ?? "",
-              firstChangedLine: diffResult.firstChangedLine ?? 0,
-              patch: generateUnifiedPatch(group.path, content, result.content),
-              warnings,
-            };
-          },
-        );
-
-        const replacementWord =
-          fileResult.replacements === 1 ? "replacement" : "replacements";
-        summaries.push(
-          `Successfully replaced ${fileResult.replacements} ${replacementWord} across ` +
-            `${fileResult.appliedCount} edit(s) in ${group.path}.`,
-        );
-        if (fileResult.warnings.length > 0) {
-          summaries.push("Coherence warnings:");
-          for (const w of fileResult.warnings) summaries.push(`  - ${w}`);
+        // Read file
+        try {
+          await fsAccess(absolutePath, constants.R_OK | constants.W_OK);
+        } catch (err) {
+          const code =
+            err && typeof err === "object" && "code" in err
+              ? `${(err as { code?: unknown }).code}`
+              : String(err);
+          throw toolError(fileNotFoundError(`${group.path} (${code})`));
         }
-        matchPasses.push(...fileResult.matchPasses);
-        if (!primaryDiff) {
-          primaryDiff = fileResult.diff;
-          primaryPatch = fileResult.patch;
-          primaryFirstChangedLine = fileResult.firstChangedLine;
+
+        throwIfAborted();
+        let buffer: Buffer;
+        try {
+          buffer = await readFile(absolutePath);
+        } catch (err) {
+          const code =
+            err && typeof err === "object" && "code" in err
+              ? `${(err as { code?: unknown }).code}`
+              : String(err);
+          throw toolError(
+            validationError(
+              `Could not read ${group.path} (${code}) — the file may have changed or been removed. Re-read the file and retry the edit.`,
+            ),
+          );
         }
-      }
 
-      const text = [summaries.join("\n")];
-      const nonSimple = matchPasses.filter((p) => p !== "simple");
-      if (nonSimple.length > 0) {
-        text.push(`Match passes: ${nonSimple.join(", ")}`);
-      }
+        const rawContent = buffer.toString("utf-8");
+        const { bom, text } = stripBom(rawContent);
+        const ending = detectLineEnding(text);
+        const content = normalizeNewlines(text);
 
-      return {
-        content: [{ type: "text" as const, text: text.join("\n") }],
-        details: {
-          diff: primaryDiff,
-          patch: primaryPatch,
-          firstChangedLine: primaryFirstChangedLine,
-          matchPasses,
-        },
-      };
-    },
+        // Apply edits (pse's fuzzy chain; no-match/ambiguous → pse errors)
+        const result = applyBlocks(content, group.blocks as never, group.path);
+        if (!result.ok || result.content === undefined) {
+          throw toolError(result.error! as EditError);
+        }
+
+        // Write-form bytes: BOM prepended, line endings restored
+        const finalContent = bom + restoreLineEndings(result.content, ending);
+
+        // GATE: validate write-form bytes before any write
+        const blockMessage = await validateContent(
+          group.path,
+          finalContent,
+          grammar,
+        );
+        if (blockMessage !== null) {
+          throw Object.assign(new Error(blockMessage), {
+            editError: { kind: "syntax" as const, message: blockMessage },
+          });
+        }
+
+        // Coherence warnings (non-blocking)
+        const warnings = coherenceCheck(result.content);
+
+        // Atomic write: temp file + rename
+        const tmpPath = resolve(dirname(absolutePath), `.${randomUUID()}.tmp`);
+        await writeFile(tmpPath, finalContent, "utf-8");
+        await rename(tmpPath, absolutePath);
+
+        const diffResult = generateDiffString(content, result.content);
+        return {
+          appliedCount: group.blocks.length,
+          replacements: result.replacements,
+          matchPasses: result.matchPasses,
+          diff: diffResult.diff ?? "",
+          firstChangedLine: diffResult.firstChangedLine ?? 0,
+          patch: generateUnifiedPatch(group.path, content, result.content),
+          warnings,
+        };
+      });
+
+      const replacementWord =
+        fileResult.replacements === 1 ? "replacement" : "replacements";
+      summaries.push(
+        `Successfully replaced ${fileResult.replacements} ${replacementWord} across ` +
+          `${fileResult.appliedCount} edit(s) in ${group.path}.`,
+      );
+      if (fileResult.warnings.length > 0) {
+        summaries.push("Coherence warnings:");
+        for (const w of fileResult.warnings) summaries.push(`  - ${w}`);
+      }
+      matchPasses.push(...fileResult.matchPasses);
+      if (!primaryDiff) {
+        primaryDiff = fileResult.diff;
+        primaryPatch = fileResult.patch;
+        primaryFirstChangedLine = fileResult.firstChangedLine;
+      }
+    }
+
+    const text = [summaries.join("\n")];
+    const nonSimple = matchPasses.filter((p) => p !== "simple");
+    if (nonSimple.length > 0) {
+      text.push(`Match passes: ${nonSimple.join(", ")}`);
+    }
+
+    return {
+      content: [{ type: "text" as const, text: text.join("\n") }],
+      details: {
+        diff: primaryDiff,
+        patch: primaryPatch,
+        firstChangedLine: primaryFirstChangedLine,
+        matchPasses,
+      },
+    };
   };
+
+  return { surface, execute };
 }

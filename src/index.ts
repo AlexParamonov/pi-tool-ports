@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
 
+import { createGatedEditTool } from "./gated-edit";
 import { createGatedWriteTool } from "./gated-write";
 
 /**
@@ -12,10 +12,9 @@ export default async function extensionFactory(
   pi: ExtensionAPI,
 ): Promise<void> {
   const cwd = process.cwd();
-  const stub = {} as unknown as ExtensionAPI;
 
-  const editDef = createRobustEditTool(cwd, stub);
-  const { execute: _editExecute, ...editSurface } = editDef;
+  const { surface: editSurface, execute: editExecute } =
+    createGatedEditTool(cwd);
 
   const { surface: writeSurface, execute: writeExecute } =
     createGatedWriteTool(cwd);
@@ -23,9 +22,7 @@ export default async function extensionFactory(
   // Register after both definitions are fully constructed.
   pi.registerTool({
     ...editSurface,
-    execute: async () => {
-      throw new Error("stub: gated edit not yet implemented");
-    },
+    execute: editExecute,
   } as never);
 
   pi.registerTool({
