@@ -1,7 +1,4 @@
-import type {
-  ExtensionAPI,
-  ToolDefinition,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   LANGUAGE_MAP,
   ensureParser,
@@ -55,7 +52,6 @@ export default async function extensionFactory(
   );
 
   // Register after both definitions are fully constructed.
-  // The captured surface fields align structurally with ToolDefinition.
   pi.registerTool({
     ...editSurface,
     execute: editExecute,
@@ -64,5 +60,5 @@ export default async function extensionFactory(
   pi.registerTool({
     ...writeSurface,
     execute: writeExecute,
-  } as ToolDefinition);
+  });
 }

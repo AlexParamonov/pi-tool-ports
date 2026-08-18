@@ -44,15 +44,10 @@ function builtinResolveToCwd(filePath: string, cwd: string): string {
 
 // ── Gated write tool factory ──────────────────────────────────────────
 
-export type GatedWriteToolOptions = GatedToolOptions;
-
-export function createGatedWriteTool(
-  cwd: string,
-  options?: GatedWriteToolOptions,
-) {
+export function createGatedWriteTool(cwd: string, options?: GatedToolOptions) {
   const grammar = options?.grammar;
   const builtinDef = createWriteToolDefinition(cwd);
-  const { ...surface } = builtinDef;
+  const { execute: _baseExecute, ...surface } = builtinDef;
 
   const execute = async (
     toolCallId: string,

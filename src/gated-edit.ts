@@ -79,14 +79,12 @@ function groupByPath(blocks: EditRequestLike[]): FileGroup[] {
   return groups;
 }
 
-export type GatedEditOptions = GatedToolOptions;
-
 /**
  * Create the gated edit tool. Captures every surface field from pse's
  * createRobustEditTool unchanged; only execute is swapped for the gated
  * implementation.
  */
-export function createGatedEditTool(cwd: string, opts?: GatedEditOptions) {
+export function createGatedEditTool(cwd: string, opts?: GatedToolOptions) {
   const stub = {} as unknown as ExtensionAPI;
   const base = createRobustEditTool(cwd, stub);
   const { execute: _baseExecute, ...surface } = base;
