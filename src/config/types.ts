@@ -1,9 +1,11 @@
+export interface ExcludeConfig {
+  /** String patterns to match against warnings. */
+  patterns?: string[];
+}
+
 /** pi-tool-ports configuration. */
 export interface ToolPortsConfig {
-  exclude?: {
-    /** String patterns to match against warnings. */
-    patterns?: string[];
-  };
+  exclude?: ExcludeConfig;
 }
 
 /** Built-in defaults. */

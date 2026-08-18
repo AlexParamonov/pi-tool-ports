@@ -10,23 +10,27 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { ToolPortsConfig } from "./types.js";
+import type { ExcludeConfig, ToolPortsConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
 const CONFIG_FILE_NAME = "pi-tool-ports.json";
 const CONFIG_DIR = getAgentDir();
 const GLOBAL_CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE_NAME);
 
+const EMPTY_EXCLUDE: ExcludeConfig = {};
+
 /** Read config from disk, merged with defaults. */
 export function loadConfig(projectDir?: string): ToolPortsConfig {
   const global = readJson(GLOBAL_CONFIG_PATH) ?? {};
   const project = projectDir ? readJson(path.join(projectDir, CONFIG_FILE_NAME)) : null;
+  const g = global.exclude ?? EMPTY_EXCLUDE;
+  const p = project?.exclude ?? EMPTY_EXCLUDE;
   return {
     exclude: {
       patterns: [
         ...(DEFAULT_CONFIG.exclude?.patterns ?? []),
-        ...(global.exclude?.patterns ?? []),
-        ...(project?.exclude?.patterns ?? []),
+        ...(g.patterns ?? []),
+        ...(p.patterns ?? []),
       ],
     },
   };

@@ -1,5 +1,6 @@
 import type { Tree } from "web-tree-sitter";
 import type { NotifyFn } from "pi-tree-sitter/src/grammar";
+import type { ExcludeConfig } from "./config/types.js";
 
 /**
  * Injectable grammar seam — the validator's only external dependency.
@@ -28,9 +29,7 @@ export type GrammarFn = (
 /** Options shared by both gated edit and gated write tools. */
 export interface GatedToolOptions {
   grammar?: GrammarFn;
-  exclude?: {
-    patterns?: string[];
-  };
+  exclude?: ExcludeConfig;
 }
 
 // ── Gate error contract ─────────────────────────────────────────────
