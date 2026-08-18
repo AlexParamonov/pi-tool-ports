@@ -27,42 +27,75 @@ async function createTempDir(): Promise<string> {
 // ── Tests ──────────────────────────────────────────────────────────────
 
 describe("loadConfig", () => {
-  test("returns empty patterns when no project config exists", () => {
-    const config = loadConfig("/nonexistent/path");
-    // Global config may exist, but patterns should be an array
-    expect(Array.isArray(config.exclude?.patterns)).toBe(true);
+  test("returns empty patterns when no config files exist", () => {
+    const config = loadConfig("/nonexistent/project", "/nonexistent/global");
+    expect(config.exclude?.patterns).toEqual([]);
   });
 
-  test("project patterns are merged into result", async () => {
-    const projectDir = join(tmpDir, "project");
+  test("loads global config patterns", async () => {
+    const globalDir = join(tmpDir, "global");
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(
+      join(globalDir, "pi-tool-ports.json"),
+      JSON.stringify({ exclude: { patterns: ["global-pattern"] } }),
+    );
+
+    const config = loadConfig("/nonexistent/project", globalDir);
+    expect(config.exclude?.patterns).toContain("global-pattern");
+  });
+
+  test("project patterns are merged with global", async () => {
+    const globalDir = join(tmpDir, "global-merge");
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(
+      join(globalDir, "pi-tool-ports.json"),
+      JSON.stringify({ exclude: { patterns: ["global-pattern"] } }),
+    );
+
+    const projectDir = join(tmpDir, "project-merge");
     await mkdir(projectDir, { recursive: true });
     await writeFile(
       join(projectDir, "pi-tool-ports.json"),
       JSON.stringify({ exclude: { patterns: ["project-pattern"] } }),
     );
 
-    const config = loadConfig(projectDir);
+    const config = loadConfig(projectDir, globalDir);
+    expect(config.exclude?.patterns).toContain("global-pattern");
     expect(config.exclude?.patterns).toContain("project-pattern");
   });
 
   test("empty config file does not break merge", async () => {
-    const projectDir = join(tmpDir, "empty");
+    const globalDir = join(tmpDir, "global-empty");
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(
+      join(globalDir, "pi-tool-ports.json"),
+      JSON.stringify({ exclude: { patterns: ["global-pattern"] } }),
+    );
+
+    const projectDir = join(tmpDir, "project-empty");
     await mkdir(projectDir, { recursive: true });
     await writeFile(join(projectDir, "pi-tool-ports.json"), "{}");
 
-    const config = loadConfig(projectDir);
-    expect(Array.isArray(config.exclude?.patterns)).toBe(true);
+    const config = loadConfig(projectDir, globalDir);
+    expect(config.exclude?.patterns).toContain("global-pattern");
   });
 
   test("missing exclude key does not break merge", async () => {
-    const projectDir = join(tmpDir, "no-exclude");
+    const globalDir = join(tmpDir, "global-no-exclude");
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(
+      join(globalDir, "pi-tool-ports.json"),
+      JSON.stringify({ exclude: { patterns: ["global-pattern"] } }),
+    );
+
+    const projectDir = join(tmpDir, "project-no-exclude");
     await mkdir(projectDir, { recursive: true });
     await writeFile(
       join(projectDir, "pi-tool-ports.json"),
       JSON.stringify({ other: "value" }),
     );
 
-    const config = loadConfig(projectDir);
-    expect(Array.isArray(config.exclude?.patterns)).toBe(true);
+    const config = loadConfig(projectDir, globalDir);
+    expect(config.exclude?.patterns).toContain("global-pattern");
   });
 });
