@@ -6,8 +6,8 @@
  *
  * Strategy: Read source at runtime, strip TypeScript annotations, evaluate with dependencies.
  */
-import { readFileSync, existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Type declarations for symbols we expose
@@ -15,22 +15,12 @@ export type LineAtFn = (source: string, offset: number) => string;
 export type FormatErrorFn = (node: unknown, source: string) => string;
 export type CollectErrorsFn = (tree: unknown, source: string) => string[];
 
-// Find pi-tree-sitter's entry point
-function findPiTreeSitter(): string {
-  const candidates = [
-    join(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../node_modules/pi-tree-sitter/index.ts",
-    ),
-    resolve("node_modules/pi-tree-sitter/index.ts"),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  throw new Error("Could not find pi-tree-sitter");
-}
-
-const source = readFileSync(findPiTreeSitter(), "utf-8");
+// Read vendored pi-tree-sitter source
+const vendorPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "vendor/index.ts",
+);
+const source = readFileSync(vendorPath, "utf-8");
 
 // Strip TypeScript annotations (signature and body separately)
 function stripTypes(code: string): string {
