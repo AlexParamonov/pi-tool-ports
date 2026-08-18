@@ -335,9 +335,8 @@ describe("gated edit: unknown/no-extension pass-through", () => {
       );
 
       expect(result.content[0].text).toContain("Successfully replaced");
-      // Grammar seam IS consulted for unknown extensions (.xyz has no grammar entry,
-      // but the gate calls the seam which returns available: false)
-      expect(calls.length).toBeGreaterThan(0);
+      // Grammar seam was NOT consulted for unknown extensions
+      expect(calls).toEqual([]);
     });
   });
 });

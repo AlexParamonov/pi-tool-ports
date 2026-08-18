@@ -11,6 +11,7 @@ import {
   BALANCE_RULES,
   checkDelimiterBalance,
 } from "pi-tree-sitter/src/delimiter";
+import { LANGUAGE_MAP } from "pi-tree-sitter/src/grammar";
 
 import type { GrammarFn } from "./types";
 
@@ -155,6 +156,7 @@ export async function validateContent(
   if (!ext) return null;
 
   const rules = BALANCE_RULES[ext];
+  if (!rules && !(ext in LANGUAGE_MAP)) return null;
 
   if (grammar) {
     const stage = await grammar(ext, content, notify);

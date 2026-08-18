@@ -8,6 +8,7 @@
 import { describe, expect, test } from "vitest";
 
 import { validateContent } from "../src/gate";
+import type { GrammarFn } from "../src/types";
 import {
   cleanFakeTree,
   makeFakeTree,
@@ -60,10 +61,14 @@ describe("gate: passing content", () => {
     expect(calls).toEqual([]);
   });
 
-  test("passes content with an unknown extension", async () => {
-    const { grammar } = recordingGrammar({ available: false, tree: null });
+  test("passes content with an unknown extension without consulting the parser", async () => {
+    const { grammar, calls } = recordingGrammar({
+      available: false,
+      tree: null,
+    });
     const result = await validateContent("data.xyz", "const x = ;\n", grammar);
     expect(result).toBeNull();
+    expect(calls).toEqual([]);
   });
 });
 
@@ -260,5 +265,251 @@ describe("gate: Lisp-like double confirmation", () => {
     const { grammar } = recordingGrammar({ available: false, tree: null });
     const result = await validateContent("a.clj", BALANCED_CLJ, grammar);
     expect(result).toBeNull();
+  });
+});
+
+describe("gate: delimiter-only extensions", () => {
+  const UNBALANCED_EDN = "(def x 1";
+  const BALANCED_EDN = "(def x 1)\n";
+  const EDN_BALANCE_ERROR =
+    "a.edn: 1 unclosed `(` — the one at line 1 is never closed; add 1 matching `)`";
+
+  test("blocks unbalanced content when grammar is unavailable", async () => {
+    const { grammar } = recordingGrammar({ available: false, tree: null });
+    const result = await validateContent("a.edn", UNBALANCED_EDN, grammar);
+    const expected =
+      "Syntax check failed for a.edn: delimiters are unbalanced.\n" +
+      "Fix and re-submit. (This is a pre-write guard — the file was NOT modified.)\n" +
+      `  ${EDN_BALANCE_ERROR}`;
+    expect(result).toBe(expected);
+  });
+
+  test("passes balanced content when grammar is unavailable", async () => {
+    const { grammar } = recordingGrammar({ available: false, tree: null });
+    const result = await validateContent("a.edn", BALANCED_EDN, grammar);
+    expect(result).toBeNull();
+  });
+
+  test("passes balanced .fnl content when grammar is unavailable", async () => {
+    const { grammar } = recordingGrammar({ available: false, tree: null });
+    const result = await validateContent("a.fnl", "(print 1)\n", grammar);
+    expect(result).toBeNull();
+  });
+
+  test("blocks unbalanced .fnl content when grammar is unavailable", async () => {
+    const { grammar } = recordingGrammar({ available: false, tree: null });
+    const result = await validateContent("a.fnl", "(print 1", grammar);
+    expect(result).toContain("delimiters are unbalanced");
+    expect(result).toContain("NOT modified");
+  });
+});
+
+describe("gate: decision-table matrix", () => {
+  const BALANCED_CLJ = "(def x 1)\n";
+  const UNBALANCED_CLJ = "(def x 1";
+  const CLEAN_TS = "const x = 1;\n";
+  const BROKEN_TS = "const x = ;\nconsole.log(x);\n";
+
+  const CLJ_ERROR_NODE = {
+    type: "ERROR",
+    isError: true,
+    position: { row: 0, column: 5 },
+    start: 5,
+    end: 6,
+  };
+  const TS_ERROR_NODE = {
+    type: "ERROR",
+    isError: true,
+    position: { row: 0, column: 10 },
+    start: 10,
+    end: 11,
+  };
+
+  type GrammarState =
+    "available-clean" | "available-error" | "unavailable" | "none";
+
+  function grammarFor(state: GrammarState, ext: string) {
+    switch (state) {
+      case "available-clean":
+        return recordingGrammar({ available: true, tree: cleanFakeTree() })
+          .grammar;
+      case "available-error": {
+        const node = ext.endsWith(".clj") ? CLJ_ERROR_NODE : TS_ERROR_NODE;
+        return recordingGrammar({ available: true, tree: makeFakeTree([node]) })
+          .grammar;
+      }
+      case "unavailable":
+        return recordingGrammar({ available: false, tree: null }).grammar;
+      case "none":
+        return undefined as unknown as GrammarFn;
+    }
+  }
+
+  const cases: Array<{
+    label: string;
+    ext: string;
+    grammarState: GrammarState;
+    content: string;
+    expected: "pass" | "block";
+  }> = [
+    // Extensionless → always pass
+    {
+      label: "no ext, any grammar, any content",
+      ext: "README",
+      grammarState: "available-error",
+      content: BROKEN_TS,
+      expected: "pass",
+    },
+
+    // Unknown extension (.xyz) → always pass, never consult parser
+    {
+      label: "unknown ext (.xyz), any grammar, any content",
+      ext: "data.xyz",
+      grammarState: "available-error",
+      content: BROKEN_TS,
+      expected: "pass",
+    },
+
+    // .ts (grammar only, no delimiter rules)
+    {
+      label: ".ts, clean grammar, clean content",
+      ext: "a.ts",
+      grammarState: "available-clean",
+      content: CLEAN_TS,
+      expected: "pass",
+    },
+    {
+      label: ".ts, error grammar, broken content",
+      ext: "a.ts",
+      grammarState: "available-error",
+      content: BROKEN_TS,
+      expected: "block",
+    },
+    {
+      label: ".ts, unavailable grammar, broken content",
+      ext: "a.ts",
+      grammarState: "unavailable",
+      content: BROKEN_TS,
+      expected: "pass",
+    },
+
+    // .clj (grammar + delimiter rules — double confirmation)
+    {
+      label: ".clj, clean grammar, balanced content",
+      ext: "a.clj",
+      grammarState: "available-clean",
+      content: BALANCED_CLJ,
+      expected: "pass",
+    },
+    {
+      label: ".clj, error grammar, balanced content (false-positive)",
+      ext: "a.clj",
+      grammarState: "available-error",
+      content: BALANCED_CLJ,
+      expected: "pass",
+    },
+    {
+      label: ".clj, error grammar, unbalanced content (combined block)",
+      ext: "a.clj",
+      grammarState: "available-error",
+      content: UNBALANCED_CLJ,
+      expected: "block",
+    },
+    {
+      label:
+        ".clj, unavailable grammar, unbalanced content (delimiter-only block)",
+      ext: "a.clj",
+      grammarState: "unavailable",
+      content: UNBALANCED_CLJ,
+      expected: "block",
+    },
+    {
+      label: ".clj, unavailable grammar, balanced content",
+      ext: "a.clj",
+      grammarState: "unavailable",
+      content: BALANCED_CLJ,
+      expected: "pass",
+    },
+
+    // .edn (grammar available + delimiter rules — grammar unavailable → delimiter check runs)
+    {
+      label: ".edn, unavailable grammar, unbalanced (delimiter block)",
+      ext: "a.edn",
+      grammarState: "unavailable",
+      content: UNBALANCED_CLJ,
+      expected: "block",
+    },
+    {
+      label: ".edn, unavailable grammar, balanced",
+      ext: "a.edn",
+      grammarState: "unavailable",
+      content: BALANCED_CLJ,
+      expected: "pass",
+    },
+
+    // No grammar seam provided
+    {
+      label: ".ts, no seam, any content",
+      ext: "a.ts",
+      grammarState: "none",
+      content: BROKEN_TS,
+      expected: "pass",
+    },
+    {
+      label: ".clj, no seam, unbalanced",
+      ext: "a.clj",
+      grammarState: "none",
+      content: UNBALANCED_CLJ,
+      expected: "block",
+    },
+
+    // .fnl (delimiter-only — not in LANGUAGE_MAP, only in BALANCE_RULES)
+    {
+      label: ".fnl, unavailable grammar, unbalanced (delimiter block)",
+      ext: "a.fnl",
+      grammarState: "unavailable",
+      content: "(print 1",
+      expected: "block",
+    },
+    {
+      label: ".fnl, unavailable grammar, balanced",
+      ext: "a.fnl",
+      grammarState: "unavailable",
+      content: "(print 1)\n",
+      expected: "pass",
+    },
+  ];
+
+  for (const c of cases) {
+    test(c.label, async () => {
+      const grammar = grammarFor(c.grammarState, c.ext);
+      const result = await validateContent(c.ext, c.content, grammar);
+      if (c.expected === "pass") {
+        expect(result).toBeNull();
+      } else {
+        expect(result).not.toBeNull();
+        expect(result).toContain("NOT modified");
+      }
+    });
+  }
+
+  test("unknown extension never consults the grammar seam", async () => {
+    const { grammar, calls } = recordingGrammar({
+      available: true,
+      tree: makeFakeTree([TS_ERROR_NODE]),
+    });
+    const result = await validateContent("data.xyz", BROKEN_TS, grammar);
+    expect(result).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("extensionless never consults the grammar seam", async () => {
+    const { grammar, calls } = recordingGrammar({
+      available: true,
+      tree: makeFakeTree([TS_ERROR_NODE]),
+    });
+    const result = await validateContent("README", BROKEN_TS, grammar);
+    expect(result).toBeNull();
+    expect(calls).toEqual([]);
   });
 });
