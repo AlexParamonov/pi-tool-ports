@@ -11,6 +11,23 @@ Other extensions are never loaded into `pi`. Instead they are consumed as plain 
 
 A blocked call (broken post-edit syntax, broken `write` content) fails with precise line/column diagnostics and never touches the file on disk.
 
+## Configuration
+
+Optional JSON config files. Project overrides global.
+
+- **Global:** `~/.pi/agent/pi-tool-ports.json`
+- **Project:** `.pi/pi-tool-ports.json`
+
+```json
+{
+  "exclude": {
+    "patterns": ["indentation jump"]
+  }
+}
+```
+
+`exclude.patterns`: substring matches against warnings. Missing files fall back to defaults.
+
 ## Toolchain
 
 - Tests: `npm run test` (vitest)
