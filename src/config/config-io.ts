@@ -17,14 +17,12 @@ const CONFIG_FILE_NAME = "pi-tool-ports.json";
 const CONFIG_DIR = getAgentDir();
 const GLOBAL_CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE_NAME);
 
-const EMPTY_EXCLUDE: ExcludeConfig = {};
-
 /** Read config from disk, merged with defaults. */
 export function loadConfig(projectDir?: string): ToolPortsConfig {
   const global = readJson(GLOBAL_CONFIG_PATH) ?? {};
   const project = projectDir ? readJson(path.join(projectDir, CONFIG_FILE_NAME)) : null;
-  const g = global.exclude ?? EMPTY_EXCLUDE;
-  const p = project?.exclude ?? EMPTY_EXCLUDE;
+  const g: ExcludeConfig = global.exclude ?? {};
+  const p: ExcludeConfig = project?.exclude ?? {};
   return {
     exclude: {
       patterns: [

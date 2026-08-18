@@ -2,6 +2,12 @@
 
 Hub/interception point for pi tool extensions.
 
+## Install
+
+```bash
+pi install npm:pi-tool-ports
+```
+
 `pi` loads exactly one extension: this one. It owns the tool registrations — `edit` and `write` today, `read`/`grep` later — and gates every write behind syntax validation.
 
 Other extensions are never loaded into `pi`. Instead they are consumed as plain libraries (deep-imported modules, entry-point factories never invoked), which lets this host compose the best of each without forking them and without duplicate tool registrations or hooks:
@@ -26,7 +32,7 @@ Optional JSON config files. Project overrides global.
 }
 ```
 
-`exclude.patterns`: substring matches against warnings. Missing files fall back to defaults.
+`exclude.patterns`: substring matches against warnings. Default: `[]` (no filtering). Missing files fall back to defaults.
 
 ## Toolchain
 

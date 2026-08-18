@@ -1,6 +1,6 @@
 {
   "name": "pi-tool-ports",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Universal plug-n-play hub for pi tool extensions",
   "keywords": [
     "pi-package",
