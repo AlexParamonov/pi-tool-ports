@@ -10,6 +10,8 @@ import type { ExcludeConfig } from "./config/types.js";
 export interface TreeSitterAdapter {
   BALANCE_RULES: Record<string, LexRules>;
   LANGUAGE_MAP: Record<string, unknown>;
+  ensureParser: () => Promise<void>;
+  loadGrammar: (entry: unknown, notify?: NotifyFn) => Promise<unknown>;
   checkDelimiterBalance: (
     path: string,
     content: string,

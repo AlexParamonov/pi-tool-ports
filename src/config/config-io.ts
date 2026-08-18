@@ -38,6 +38,7 @@ export function createFileConfigIO(projectDir?: string): ConfigIO {
               []),
           ],
         },
+        ports: (project?.ports ?? global?.ports) as ToolPortsConfig["ports"],
       };
     },
   };

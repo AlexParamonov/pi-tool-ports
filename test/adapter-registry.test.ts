@@ -25,10 +25,6 @@ import {
 // ── Adapter loading ──────────────────────────────────────────────────
 
 describe("adapter registry: loadAdapter", () => {
-  test("loadAdapter is a function", () => {
-    expect(typeof loadAdapter).toBe("function");
-  });
-
   test("loading unknown adapter throws", async () => {
     await expect(loadAdapter("nonexistent" as AdapterName)).rejects.toThrow(
       /unknown adapter/i,

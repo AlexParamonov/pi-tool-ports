@@ -45,7 +45,6 @@ export default async function extensionFactory(
   }
 
   // Default grammar seam: loads tree-sitter WASM grammars.
-  // Uses the tree-sitter adapter's functions via dynamic import.
   const defaultGrammar = async (
     ext: string,
     content: string,
@@ -56,13 +55,8 @@ export default async function extensionFactory(
     const entry = treeSitter.LANGUAGE_MAP[ext.toLowerCase()];
     if (!entry) return { available: false, tree: null };
 
-    const tsAdapter = (await loadAdapter("tree-sitter")) as {
-      ensureParser: () => Promise<void>;
-      loadGrammar: (entry: unknown, notify?: NotifyFn) => Promise<unknown>;
-    };
-
-    await tsAdapter.ensureParser();
-    const language = await tsAdapter.loadGrammar(entry, notify);
+    await treeSitter.ensureParser();
+    const language = await treeSitter.loadGrammar(entry, notify);
     if (!language) return { available: false, tree: null };
 
     const parser = new Parser();
