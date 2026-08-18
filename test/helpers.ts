@@ -2,7 +2,7 @@
 // temp-dir factories. No gate/message logic lives here — expected values
 // are pinned as literals in the test files (the byte-parity contract).
 
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect } from "vitest";
@@ -137,31 +137,7 @@ export async function withTempDir<T>(
   }
 }
 
-/**
- * Two sibling temp dirs, each containing the same file. The host tool runs
- * against dir A, the unmodified library (oracle) against dir B, so results
- * and error messages are comparable with identical relative paths.
- */
-export async function withSandboxPair<T>(
-  fileName: string,
-  content: string,
-  fn: (hostDir: string, oracleDir: string) => Promise<T>,
-): Promise<T> {
-  const hostDir = await mkdtemp(join(tmpdir(), "gated-w1-host-"));
-  const oracleDir = await mkdtemp(join(tmpdir(), "gated-w1-oracle-"));
-  try {
-    await writeFile(join(hostDir, fileName), content);
-    await writeFile(join(oracleDir, fileName), content);
-    return await fn(hostDir, oracleDir);
-  } finally {
-    await Promise.all([
-      rm(hostDir, { recursive: true, force: true }),
-      rm(oracleDir, { recursive: true, force: true }),
-    ]);
-  }
-}
-
-// ── Error capture ───────────────────────────────────────────────────────
+// ── Error capture
 
 /** The structured error a blocked tool call carries (for renderers/debugging). */
 export interface ToolError extends Error {
