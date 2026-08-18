@@ -10,8 +10,8 @@
 import {
   BALANCE_RULES,
   checkDelimiterBalance,
-} from "pi-tree-sitter/src/delimiter";
-import { LANGUAGE_MAP } from "pi-tree-sitter/src/grammar";
+  LANGUAGE_MAP,
+} from "./adapters/tree-sitter";
 
 import type { GrammarFn } from "./types";
 

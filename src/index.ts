@@ -1,11 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Parser } from "web-tree-sitter";
+
 import {
   LANGUAGE_MAP,
   ensureParser,
   loadGrammar,
-} from "pi-tree-sitter/src/grammar";
-import type { NotifyFn } from "pi-tree-sitter/src/grammar";
-import { Parser } from "web-tree-sitter";
+  type NotifyFn,
+} from "./adapters/tree-sitter";
 
 import { loadConfig } from "./config/config-io";
 import { createEditPort } from "./ports/edit";

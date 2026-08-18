@@ -19,26 +19,28 @@ import {
   withFileMutationQueue,
 } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { applyBlocks } from "pi-semantic-edit/src/domain/editor";
-import { coherenceCheck } from "pi-semantic-edit/src/domain/coherence";
+
 import {
+  applyBlocks,
+  coherenceCheck,
+  detectLineEnding,
   fileNotFoundError,
   malformedPatchError,
   missingPathError,
-  validationError,
-} from "pi-semantic-edit/src/domain/errors";
-import { MalformedPatchError } from "pi-semantic-edit/src/domain/parser";
-import type { EditError, EditRequest } from "pi-semantic-edit/src/domain/types";
-import {
-  detectLineEnding,
+  normalizeEditArgs,
   normalizeNewlines,
   resolveToCwd,
   restoreLineEndings,
   stripBom,
-} from "pi-semantic-edit/src/domain/utils";
-import { normalizeEditArgs } from "pi-semantic-edit/src/pi/normalize";
-import type { EditRequestLike } from "pi-semantic-edit/src/pi/normalize";
-import { createRobustEditTool } from "pi-semantic-edit/src/pi/tool";
+  validationError,
+  createRobustEditTool,
+  MalformedPatchError,
+} from "../adapters/semantic-edit";
+import type {
+  EditError,
+  EditRequest,
+  EditRequestLike,
+} from "../adapters/semantic-edit";
 
 import { validateContent } from "../gate";
 import { gateBlockError, type GatedToolOptions } from "../types";

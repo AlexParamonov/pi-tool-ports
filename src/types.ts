@@ -1,5 +1,6 @@
 import type { Tree } from "web-tree-sitter";
-import type { NotifyFn } from "pi-tree-sitter/src/grammar";
+
+import type { NotifyFn } from "./adapters/tree-sitter";
 import type { ExcludeConfig } from "./config/types.js";
 
 /**
