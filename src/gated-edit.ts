@@ -112,7 +112,7 @@ export function createGatedEditTool(cwd: string, opts?: GatedToolOptions) {
       if (err instanceof MalformedPatchError) {
         throw toolError(malformedPatchError(err.message, err.index));
       }
-      throw err;
+      throw toolError(err as EditError);
     }
     if (!blocks || blocks.length === 0) {
       throw toolError(

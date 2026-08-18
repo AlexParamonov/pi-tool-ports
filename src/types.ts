@@ -35,12 +35,16 @@ export interface GatedToolOptions {
 // ── Gate error contract ─────────────────────────────────────────────
 
 /** Structured error a blocked tool call carries (for renderers/debugging). */
-export interface GateBlockError extends Error {
+export class GateBlockError extends Error {
   editError: { kind: "syntax"; message: string };
+
+  constructor(message: string) {
+    super(message);
+    this.name = "GateBlockError";
+    this.editError = { kind: "syntax", message };
+  }
 }
 
 export function gateBlockError(message: string): GateBlockError {
-  return Object.assign(new Error(message), {
-    editError: { kind: "syntax" as const, message },
-  });
+  return new GateBlockError(message);
 }
