@@ -2,9 +2,17 @@ import type {
   ExtensionAPI,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import {
+  LANGUAGE_MAP,
+  ensureParser,
+  loadGrammar,
+} from "pi-tree-sitter/src/grammar";
+import type { NotifyFn } from "pi-tree-sitter/src/grammar";
+import { Parser } from "web-tree-sitter";
 
 import { createGatedEditTool } from "./gated-edit";
 import { createGatedWriteTool } from "./gated-write";
+import type { GrammarResult } from "./types";
 
 /**
  * Extension factory: registers exactly one `edit` and one `write` tool.
@@ -16,11 +24,35 @@ export default async function extensionFactory(
 ): Promise<void> {
   const cwd = process.cwd();
 
-  const { surface: editSurface, execute: editExecute } =
-    createGatedEditTool(cwd);
+  // Default grammar seam: loads tree-sitter WASM grammars via pts.
+  // Lazy — no prefetch; CDN download on first validated call per language.
+  const defaultGrammar = async (
+    ext: string,
+    content: string,
+    notify?: NotifyFn,
+  ): Promise<GrammarResult> => {
+    const entry = LANGUAGE_MAP[ext.toLowerCase()];
+    if (!entry) return { available: false, tree: null };
 
-  const { surface: writeSurface, execute: writeExecute } =
-    createGatedWriteTool(cwd);
+    await ensureParser();
+    const language = await loadGrammar(entry, notify);
+    if (!language) return { available: false, tree: null };
+
+    const parser = new Parser();
+    parser.setLanguage(language);
+    const tree = parser.parse(content);
+    return { available: true, tree };
+  };
+
+  const { surface: editSurface, execute: editExecute } = createGatedEditTool(
+    cwd,
+    { grammar: defaultGrammar },
+  );
+
+  const { surface: writeSurface, execute: writeExecute } = createGatedWriteTool(
+    cwd,
+    { grammar: defaultGrammar },
+  );
 
   // Register after both definitions are fully constructed.
   // The captured surface fields align structurally with ToolDefinition.
