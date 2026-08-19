@@ -9,7 +9,10 @@
 //
 // Config is injected through the factory's ConfigIO seam (no vi.mock, no
 // env vars); gate behavior is observed through the registered tool's
-// execute — a gated call throws, a gated-off call writes.
+// execute — a gated call throws, a gated-off call writes. The grammar
+// seam is injected with a recording fake (brokenGrammar) so the gate-on
+// direction never touches the real WASM grammars (no CDN, no disk cache):
+// the fake's `calls` proves which port consulted the grammar.
 
 import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -22,6 +25,7 @@ import type { ToolPortsConfig } from "../src/config/types";
 import extensionFactory from "../src/index";
 import { createEditPort } from "../src/ports/edit";
 import { createWritePort } from "../src/ports/write";
+import type { GrammarFn } from "../src/types";
 import {
   brokenGrammar,
   makeEditAdapter,
@@ -40,9 +44,12 @@ function configIO(ports: ToolPortsConfig["ports"]): ConfigIO {
   return { load: () => ({ ports }) };
 }
 
-async function runFactory(ports: ToolPortsConfig["ports"]) {
+async function runFactory(
+  ports: ToolPortsConfig["ports"],
+  grammar?: GrammarFn,
+) {
   const { api, calls, registered } = recordingExtensionApi();
-  await extensionFactory(api, configIO(ports));
+  await extensionFactory(api, configIO(ports), grammar);
   return { calls, registered };
 }
 
@@ -125,13 +132,17 @@ describe("factory: honors ports.<port>.adapters registration", () => {
 describe("factory: per-port gate state (shared tree-sitter)", () => {
   test("disabling tree-sitter for edit leaves the write gate on", async () => {
     await withTempDir(async (dir) => {
-      const { registered } = await runFactory({
-        edit: { adapters: ["semantic-edit"] },
-        write: { adapters: ["semantic-edit", "tree-sitter"] },
-      });
+      const { grammar, calls } = brokenGrammar();
+      const { registered } = await runFactory(
+        {
+          edit: { adapters: ["semantic-edit"] },
+          write: { adapters: ["semantic-edit", "tree-sitter"] },
+        },
+        grammar,
+      );
       expect(toolNames(registered)).toEqual(["edit", "write"]);
 
-      // edit gate off: the broken edit lands
+      // edit gate off: the broken edit lands without consulting the seam
       const filePath = join(dir, "a.ts");
       await writeFile(filePath, "const x = 1;\n");
       const result = await editExecuteOf(registered)(
@@ -146,6 +157,7 @@ describe("factory: per-port gate state (shared tree-sitter)", () => {
       );
       expect(result.content[0].text).toContain("Successfully replaced");
       expect(await readFile(filePath, "utf-8")).toBe("const x = ;\n");
+      expect(calls).toEqual([]);
 
       // write gate still on: the shared tree-sitter is unaffected
       await expect(
@@ -158,18 +170,23 @@ describe("factory: per-port gate state (shared tree-sitter)", () => {
         ),
       ).rejects.toThrow("Syntax check failed");
       await expect(access(join(dir, "b.ts"))).rejects.toThrow();
+      expect(calls).toEqual([{ ext: ".ts", content: BROKEN_TS }]);
     });
   });
 
   test("disabling tree-sitter for write leaves the edit gate on", async () => {
     await withTempDir(async (dir) => {
-      const { registered } = await runFactory({
-        edit: { adapters: ["semantic-edit", "tree-sitter"] },
-        write: { adapters: ["semantic-edit"] },
-      });
+      const { grammar, calls } = brokenGrammar();
+      const { registered } = await runFactory(
+        {
+          edit: { adapters: ["semantic-edit", "tree-sitter"] },
+          write: { adapters: ["semantic-edit"] },
+        },
+        grammar,
+      );
       expect(toolNames(registered)).toEqual(["edit", "write"]);
 
-      // write gate off: the broken write lands
+      // write gate off: the broken write lands without consulting the seam
       const result = await writeExecuteOf(registered)(
         "call-1",
         { path: "b.ts", content: BROKEN_TS },
@@ -181,6 +198,7 @@ describe("factory: per-port gate state (shared tree-sitter)", () => {
         `Successfully wrote ${BROKEN_TS.length} bytes to b.ts`,
       );
       expect(await readFile(join(dir, "b.ts"), "utf-8")).toBe(BROKEN_TS);
+      expect(calls).toEqual([]);
 
       // edit gate still on: the broken edit is blocked, file untouched
       const filePath = join(dir, "a.ts");
@@ -199,15 +217,20 @@ describe("factory: per-port gate state (shared tree-sitter)", () => {
         ),
       ).rejects.toThrow("Syntax check failed");
       expect(Buffer.compare(original, await readFile(filePath))).toBe(0);
+      expect(calls).toEqual([{ ext: ".ts", content: "const x = ;\n" }]);
     });
   });
 
   test("write list with only tree-sitter registers write with the gate on", async () => {
     await withTempDir(async (dir) => {
-      const { registered } = await runFactory({
-        edit: { adapters: [] },
-        write: { adapters: ["tree-sitter"] },
-      });
+      const { grammar, calls } = brokenGrammar();
+      const { registered } = await runFactory(
+        {
+          edit: { adapters: [] },
+          write: { adapters: ["tree-sitter"] },
+        },
+        grammar,
+      );
       expect(toolNames(registered)).toEqual(["write"]);
 
       await expect(
@@ -220,6 +243,7 @@ describe("factory: per-port gate state (shared tree-sitter)", () => {
         ),
       ).rejects.toThrow("Syntax check failed");
       await expect(access(join(dir, "a.ts"))).rejects.toThrow();
+      expect(calls).toEqual([{ ext: ".ts", content: BROKEN_TS }]);
     });
   });
 });

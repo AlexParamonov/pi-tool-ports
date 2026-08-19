@@ -3,13 +3,12 @@ import { Parser } from "web-tree-sitter";
 
 import { createSemanticEditAdapter } from "./adapters/semantic-edit";
 import { createTreeSitterAdapter } from "./adapters/tree-sitter";
-import type { NotifyFn } from "./adapters/tree-sitter";
 
 import { loadConfig } from "./config/config-io";
 import type { ConfigIO } from "./config/config-io";
 import { createEditPort } from "./ports/edit";
 import { createWritePort } from "./ports/write";
-import type { GrammarResult } from "./types";
+import type { GrammarFn } from "./types";
 
 /**
  * Extension factory: registers the `edit` and `write` tools, capturing
@@ -27,10 +26,13 @@ import type { GrammarResult } from "./types";
  *
  * @param pi host extension API
  * @param io config source (injected in tests; defaults to the file-based config)
+ * @param grammar parse seam (injected in tests with fake trees; defaults to
+ *   the real tree-sitter WASM grammars, fetched from CDN with a disk cache)
  */
 export default async function extensionFactory(
   pi: ExtensionAPI,
   io?: ConfigIO,
+  grammar?: GrammarFn,
 ): Promise<void> {
   const cwd = process.cwd();
   const config = loadConfig(io);
@@ -46,12 +48,9 @@ export default async function extensionFactory(
   // One shared tree-sitter adapter for both ports' gates.
   const treeSitter = createTreeSitterAdapter();
 
-  // Default grammar seam: loads tree-sitter WASM grammars.
-  const grammar = async (
-    ext: string,
-    content: string,
-    notify?: NotifyFn,
-  ): Promise<GrammarResult> => {
+  // Default grammar seam: loads tree-sitter WASM grammars (CDN with disk
+  // cache). Tests inject a fake seam to stay off the network.
+  const defaultGrammar: GrammarFn = async (ext, content, notify) => {
     const entry = treeSitter.LANGUAGE_MAP[ext.toLowerCase()];
     if (!entry) return { available: false, tree: null };
 
@@ -64,13 +63,14 @@ export default async function extensionFactory(
     const tree = parser.parse(content);
     return { available: true, tree };
   };
+  const grammarFn = grammar ?? defaultGrammar;
 
   // Construct every enabled port before any registration, so a
   // construction failure propagates with zero registrations.
   const editPort = editEnabled
     ? createEditPort(cwd, {
         editAdapter: createSemanticEditAdapter(),
-        grammar,
+        grammar: grammarFn,
         treeSitter,
         gate: editGateOn,
         exclude: config.exclude,
@@ -78,7 +78,7 @@ export default async function extensionFactory(
     : null;
   const writePort = writeEnabled
     ? createWritePort(cwd, {
-        grammar,
+        grammar: grammarFn,
         treeSitter,
         gate: writeGateOn,
       })
