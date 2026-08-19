@@ -8,7 +8,7 @@ import {
   loadConfig,
   type ConfigIO,
 } from "../src/config/config-io";
-import { DEFAULT_CONFIG, type ToolPortsConfig } from "../src/config/types";
+import type { ToolPortsConfig } from "../src/config/types";
 import { withTempDir } from "./helpers";
 
 // ── Helpers ────────────────────────────────────────────────────────────
