@@ -1,6 +1,6 @@
-# pi-tool-ports
+# Pi tool ports
 
-Hub/interception point for pi tool extensions.
+Pi extension that lets you combine incompatible tool extensions as pluggable adapters fitting into defined ports.
 
 ## Install
 
@@ -8,14 +8,18 @@ Hub/interception point for pi tool extensions.
 pi install npm:pi-tool-ports
 ```
 
-`pi` loads exactly one extension: this one. It owns the tool registrations — `edit` and `write` today, `read`/`grep` later — and gates every write behind syntax validation.
+## Architecture
 
-Other extensions are never loaded into `pi`. Instead they are consumed as plain libraries (deep-imported modules, entry-point factories never invoked), which lets this host compose the best of each without forking them and without duplicate tool registrations or hooks:
+`pi` loads only this extension. The user picks which ports and adapters to use in config.
 
-- `pi-semantic-edit` → the `edit` tool surface and its matcher/applier pipeline (fuzzy passes, diff/patch, success contract)
-- `pi-tree-sitter` → pre-write syntax validation (WASM grammars, delimiter-balance double-confirmation)
+This keeps conflicting extensions from stepping on each other and avoids system prompt pollution.
 
-A blocked call (broken post-edit syntax, broken `write` content) fails with precise line/column diagnostics and never touches the file on disk.
+**Ports** own tool registrations and execution flow. Currently `edit` and `write` are supported.
+
+**Adapters** are extensions consumed as deep-imported libraries, not as pi extensions. The entry factories never run. This lets the host combine features without forking code or registering tools twice:
+
+- `pi-semantic-edit`: edit tool surface with fuzzy matching
+- `pi-tree-sitter`: pre-write syntax validation (WASM grammars + delimiter balance)
 
 ## Configuration
 
@@ -36,22 +40,33 @@ Optional JSON config files. Project overrides global.
 }
 ```
 
-- `exclude.patterns`: substring matches against warnings. Default: `[]` (no filtering). Missing files fall back to defaults.
-- `ports.<port>.adapters`: selects the adapters per port. Both default to `["semantic-edit", "tree-sitter"]` (the current behavior). An explicit `[]` disables the port — its tool is not registered. The `edit` tool registers only when `semantic-edit` is listed (it is the port's engine); the `write` tool registers when its list contains at least one known adapter name. The syntax gate runs only for ports that list `tree-sitter`; gate state is per port, so disabling tree-sitter for one port leaves the other port's gate fully functional. Unknown adapter names are ignored, so a list of only unknown names disables the port.
+- `ports.<port>.adapters`: which adapters each port uses
+  - `["semantic-edit", "tree-sitter"]`: default
+  - `[]`: disables the port
+  - Missing `tree-sitter`: disables syntax gate for that port
+  - Unknown adapter names are ignored
+- `exclude.patterns`: substring matches against tool result warnings (default: `[]`)
+
+## Known issues
+
+We install all adapters as npm dependencies but only activate selected ones.
+
+Selective installation is planned if needed.
 
 ## Licensing
 
-This project is dual-licensed:
-
-- **Our code** (`src/adapters/registry.ts`, `src/config/`, `src/ports/`, etc.): MIT (see `LICENSE`)
+- **Our code**: MIT (see `LICENSE`)
 - **Vendored adapter code** (`src/adapters/*/vendor/`): licensed under their original terms:
   - `pi-semantic-edit`: MIT (copyright K2, see `src/adapters/semantic-edit/vendor/LICENSE`)
   - `pi-tree-sitter`: EPL-2.0 (copyright Marko Kocic, see `src/adapters/tree-sitter/vendor/LICENSE`)
 
-Vendored files may be modified minimally (add exports, remove unused imports, cleanup). Logic and behavior are unchanged.
+Vendored files may be modified minimally (add exports, remove unused imports, cleanup).
 
-## Toolchain
+## Development
 
-- Tests: `npm run test` (vitest)
-- Type check: `npm run typecheck` (`tsc --noEmit`)
-- Format: `npm run format` / `npm run format:check` (prettier)
+```bash
+npm run test          # vitest
+npm run typecheck     # tsc --noEmit
+npm run format        # prettier
+npm run format:check  # prettier check
+```

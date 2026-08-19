@@ -1,7 +1,7 @@
 {
   "name": "pi-tool-ports",
-  "version": "0.0.1",
-  "description": "Universal plug-n-play hub for pi tool extensions",
+  "version": "0.1.0",
+  "description": "Combine tool extensions as pluggable adapters in Pi",
   "keywords": [
     "pi-package",
     "pi",
@@ -12,10 +12,8 @@
     "edit",
     "write",
     "syntax-validation",
-    "syntax",
-    "validation",
-    "linter",
-    "ai"
+    "adapters",
+    "linter"
   ],
   "author": "AlexParamonov",
   "license": "(MIT AND EPL-2.0)",
