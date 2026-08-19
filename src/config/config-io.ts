@@ -10,8 +10,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { ExcludeConfig, ToolPortsConfig } from "./types.js";
-import { DEFAULT_CONFIG } from "./types.js";
+import { isAdapterName, type AdapterName } from "../adapters/registry";
+import type {
+  ExcludeConfig,
+  ResolvedConfig,
+  ToolPortsConfig,
+} from "./types.js";
+import { DEFAULT_ADAPTERS, DEFAULT_CONFIG } from "./types.js";
 
 const CONFIG_FILE_NAME = "pi-tool-ports.json";
 const CONFIG_DIR = getAgentDir();
@@ -44,32 +49,27 @@ export function createFileConfigIO(projectDir?: string): ConfigIO {
   };
 }
 
+/**
+ * Resolve a raw file-format adapter list to known adapter names: unknown
+ * names are dropped, so a list of only unknown names disables the port.
+ * The default list applies when the key is missing.
+ */
+function resolveAdapters(list: string[] | undefined): AdapterName[] {
+  const names = list ?? [...DEFAULT_ADAPTERS];
+  return names.filter(isAdapterName);
+}
+
 /** Read config, merged with defaults. Accepts injectable ConfigIO for testing. */
-export function loadConfig(io?: ConfigIO): ToolPortsConfig {
+export function loadConfig(io?: ConfigIO): ResolvedConfig {
   const loaded = (io ?? createFileConfigIO()).load();
   const g: ExcludeConfig = loaded.exclude ?? {};
   return {
     exclude: {
-      patterns: [
-        ...(DEFAULT_CONFIG.exclude?.patterns ?? []),
-        ...(g.patterns ?? []),
-      ],
+      patterns: [...DEFAULT_CONFIG.exclude.patterns, ...(g.patterns ?? [])],
     },
     ports: {
-      edit: {
-        adapters: loaded.ports?.edit?.adapters ??
-          DEFAULT_CONFIG.ports?.edit?.adapters ?? [
-            "semantic-edit",
-            "tree-sitter",
-          ],
-      },
-      write: {
-        adapters: loaded.ports?.write?.adapters ??
-          DEFAULT_CONFIG.ports?.write?.adapters ?? [
-            "semantic-edit",
-            "tree-sitter",
-          ],
-      },
+      edit: { adapters: resolveAdapters(loaded.ports?.edit?.adapters) },
+      write: { adapters: resolveAdapters(loaded.ports?.write?.adapters) },
     },
   };
 }

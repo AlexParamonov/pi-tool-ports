@@ -8,7 +8,7 @@ import {
   loadConfig,
   type ConfigIO,
 } from "../src/config/config-io";
-import { DEFAULT_CONFIG, type ToolPortsConfig } from "../src/config/types";
+import type { ToolPortsConfig } from "../src/config/types";
 import { withTempDir } from "./helpers";
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -135,5 +135,33 @@ describe("adapter config", () => {
       "semantic-edit",
       "tree-sitter",
     ]);
+  });
+
+  test("unknown adapter names are dropped, known names kept", () => {
+    const io: ConfigIO = {
+      load: () => ({
+        ports: {
+          write: { adapters: ["tree-sitter", "treesitter"] },
+          edit: { adapters: ["bogus"] },
+        },
+      }),
+    };
+    const config = loadConfig(io);
+    expect(config.ports.write.adapters).toEqual(["tree-sitter"]);
+    expect(config.ports.edit.adapters).toEqual([]);
+  });
+
+  test("prototype-key names are not adapter names", () => {
+    const io: ConfigIO = {
+      load: () => ({
+        ports: {
+          write: { adapters: ["constructor"] },
+          edit: { adapters: ["toString", "__proto__"] },
+        },
+      }),
+    };
+    const config = loadConfig(io);
+    expect(config.ports.write.adapters).toEqual([]);
+    expect(config.ports.edit.adapters).toEqual([]);
   });
 });

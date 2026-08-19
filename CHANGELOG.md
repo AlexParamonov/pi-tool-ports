@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Factory grammar seam** — `extensionFactory` accepts an optional `GrammarFn` so tests inject fake parse trees; the default stays the real WASM grammars
+
+### Changed
+
+- **Factory honors adapter config** — `ports.edit.adapters` and `ports.write.adapters` now control registration and the syntax gate: an explicit `[]` disables the port (tool not registered); the `edit` tool registers only when `semantic-edit` is listed (its engine); the `write` tool registers when its list contains at least one known adapter name; the syntax gate runs only for ports that list `tree-sitter`, with gate state kept per port on the shared tree-sitter instance. Unknown adapter names are ignored, so a list of only unknown names disables the port; missing config keeps the previous behavior (both tools, gate on)
+
 ## [0.0.1] — 2026-08-23
 
 Initial release.

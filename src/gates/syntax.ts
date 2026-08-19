@@ -7,7 +7,11 @@
  */
 import type { LexRules } from "pi-tree-sitter/src/delimiter";
 
-import type { GrammarFn, TreeSitterAdapter } from "../types";
+import {
+  gateBlockError,
+  type GrammarFn,
+  type TreeSitterAdapter,
+} from "../types";
 
 const GUARD_MSG =
   "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
@@ -95,4 +99,19 @@ export async function validateSyntax(
   }
 
   return null;
+}
+
+/**
+ * Run the syntax gate for a port: throws GateBlockError when the content
+ * is blocked, otherwise returns. The single place the gate's error
+ * contract (validate, then throw GateBlockError) is defined.
+ */
+export async function runSyntaxGate(
+  path: string,
+  content: string,
+  grammar?: GrammarFn,
+  treeSitter?: TreeSitterAdapter,
+): Promise<void> {
+  const blockMessage = await validateSyntax(path, content, grammar, treeSitter);
+  if (blockMessage !== null) throw gateBlockError(blockMessage);
 }
