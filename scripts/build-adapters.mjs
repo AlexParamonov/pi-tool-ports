@@ -26,30 +26,6 @@ const TREE_SITTER_EXPORTS = [
 
 const ADAPTERS = [
   {
-    name: "semantic-edit",
-    pkg: "pi-semantic-edit",
-    // Copy only needed files from src/
-    copyFiles: [
-      "src/domain/apply.ts",
-      "src/domain/chain.ts",
-      "src/domain/closest.ts",
-      "src/domain/coherence.ts",
-      "src/domain/editor.ts",
-      "src/domain/errors.ts",
-      "src/domain/parser.ts",
-      "src/domain/passes.ts",
-      "src/domain/similarity.ts",
-      "src/domain/types.ts",
-      "src/domain/uniqueness.ts",
-      "src/domain/utils.ts",
-      "src/pi/normalize.ts",
-      "src/pi/render.ts",
-      "src/pi/schema.ts",
-      "src/pi/tool.ts",
-      "LICENSE",
-    ],
-  },
-  {
     name: "tree-sitter",
     pkg: "pi-tree-sitter",
     // Copy only needed files

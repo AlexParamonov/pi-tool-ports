@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Removed semantic-edit vendor; adapter uses direct imports from `pi-semantic-edit` package
 - Factory creates adapters and injects them into ports
 - Edit port receives editAdapter via options instead of direct imports
 - Build script copies only needed files (reduced vendor size)
