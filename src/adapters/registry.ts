@@ -22,7 +22,7 @@ const ADAPTERS: Record<AdapterName, () => Promise<Record<string, unknown>>> = {
  * the port instead of silently dropping its safety behavior.
  */
 export function isAdapterName(name: string): name is AdapterName {
-  return name in ADAPTERS;
+  return Object.hasOwn(ADAPTERS, name);
 }
 
 /**

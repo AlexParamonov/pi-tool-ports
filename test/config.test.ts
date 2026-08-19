@@ -150,4 +150,18 @@ describe("adapter config", () => {
     expect(config.ports.write.adapters).toEqual(["tree-sitter"]);
     expect(config.ports.edit.adapters).toEqual([]);
   });
+
+  test("prototype-key names are not adapter names", () => {
+    const io: ConfigIO = {
+      load: () => ({
+        ports: {
+          write: { adapters: ["constructor"] },
+          edit: { adapters: ["toString", "__proto__"] },
+        },
+      }),
+    };
+    const config = loadConfig(io);
+    expect(config.ports.write.adapters).toEqual([]);
+    expect(config.ports.edit.adapters).toEqual([]);
+  });
 });
