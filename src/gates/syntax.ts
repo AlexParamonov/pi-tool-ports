@@ -23,18 +23,6 @@ function formatErrors(errors: string[], maxErrors: number): string {
   return body;
 }
 
-interface NodeLike {
-  type: string;
-  isError: boolean;
-  isMissing: boolean;
-  startPosition: { row: number; column: number };
-  startIndex: number;
-  endIndex: number;
-  childCount: number;
-  child: (i: number) => NodeLike;
-  children: NodeLike[];
-}
-
 // ── Gate decision table ────────────────────────────────────────────────
 
 /**
@@ -68,10 +56,7 @@ export async function validateSyntax(
     const stage = await grammar(ext, content, notify);
 
     if (stage.available && stage.tree && stage.tree.rootNode.hasError) {
-      const errors = collectErrors(
-        stage.tree as unknown as { rootNode: NodeLike },
-        content,
-      );
+      const errors = collectErrors(stage.tree, content);
       if (errors.length > 0) {
         let balanceErr: string | null = null;
         if (rules) {
