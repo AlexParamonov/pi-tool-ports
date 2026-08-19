@@ -13,7 +13,7 @@ const ADAPTERS: Record<AdapterName, () => Promise<Record<string, unknown>>> = {
   "semantic-edit": () =>
     import("./semantic-edit.js") as Promise<Record<string, unknown>>,
   "tree-sitter": () =>
-    import("./tree-sitter.js") as Promise<Record<string, unknown>>,
+    import("./tree-sitter/index.js") as Promise<Record<string, unknown>>,
 };
 
 /**

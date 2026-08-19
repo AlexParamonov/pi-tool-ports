@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Parser } from "web-tree-sitter";
 
 import { createSemanticEditAdapter } from "./adapters/semantic-edit-adapter";
-import { createTreeSitterAdapter } from "./adapters/tree-sitter-adapter";
+import { createTreeSitterAdapter } from "./adapters/tree-sitter";
 import type { NotifyFn } from "./adapters/tree-sitter";
 
 import { loadConfig } from "./config/config-io";
