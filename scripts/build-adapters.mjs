@@ -28,17 +28,37 @@ const ADAPTERS = [
   {
     name: "semantic-edit",
     pkg: "pi-semantic-edit",
-    // Copy the entire src/ directory
-    copyDirs: ["src"],
-    // Also copy index.ts if it exists (some packages have it)
-    copyFiles: ["LICENSE"],
+    // Copy only needed files from src/
+    copyFiles: [
+      "src/domain/apply.ts",
+      "src/domain/chain.ts",
+      "src/domain/closest.ts",
+      "src/domain/coherence.ts",
+      "src/domain/editor.ts",
+      "src/domain/errors.ts",
+      "src/domain/parser.ts",
+      "src/domain/passes.ts",
+      "src/domain/similarity.ts",
+      "src/domain/types.ts",
+      "src/domain/uniqueness.ts",
+      "src/domain/utils.ts",
+      "src/pi/normalize.ts",
+      "src/pi/render.ts",
+      "src/pi/schema.ts",
+      "src/pi/tool.ts",
+      "LICENSE",
+    ],
   },
   {
     name: "tree-sitter",
     pkg: "pi-tree-sitter",
-    // Copy index.ts and src/ directory
-    copyFiles: ["index.ts", "LICENSE"],
-    copyDirs: ["src"],
+    // Copy only needed files
+    copyFiles: [
+      "index.ts",
+      "src/delimiter.ts",
+      "src/grammar.ts",
+      "LICENSE",
+    ],
     // Add export keywords to needed symbols
     patchExports: TREE_SITTER_EXPORTS,
   },

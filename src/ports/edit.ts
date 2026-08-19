@@ -20,27 +20,12 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import {
-  applyBlocks,
-  coherenceCheck,
-  detectLineEnding,
-  fileNotFoundError,
-  malformedPatchError,
-  missingPathError,
-  normalizeEditArgs,
-  normalizeNewlines,
-  resolveToCwd,
-  restoreLineEndings,
-  stripBom,
-  validationError,
-  createRobustEditTool,
-  MalformedPatchError,
-} from "../adapters/semantic-edit";
 import type {
+  EditAdapter,
   EditError,
   EditRequest,
   EditRequestLike,
-} from "../adapters/semantic-edit";
+} from "../adapters/types";
 
 import { validateSyntax } from "../gates/syntax";
 import { gateBlockError, type GatedToolOptions } from "../types";
@@ -83,13 +68,15 @@ function groupByPath(blocks: EditRequestLike[]): FileGroup[] {
  * createRobustEditTool unchanged; only execute is swapped for the gated
  * implementation.
  */
-export function createEditPort(cwd: string, opts?: GatedToolOptions) {
+export function createEditPort(
+  cwd: string,
+  opts: GatedToolOptions & { editAdapter: EditAdapter },
+) {
+  const { editAdapter, grammar, treeSitter, exclude } = opts;
   const stub = {} as unknown as ExtensionAPI;
-  const base = createRobustEditTool(cwd, stub);
-  const { execute: _baseExecute, ...surface } = base;
-  const grammar = opts?.grammar;
-  const treeSitter = opts?.treeSitter;
-  const excludePatterns = opts?.exclude?.patterns ?? [];
+  const base = editAdapter.createRobustEditTool(cwd, stub);
+  const { execute: _baseExecute, ...surface } = base as Record<string, unknown>;
+  const excludePatterns = exclude?.patterns ?? [];
 
   const execute = async (
     _toolCallId: string,
@@ -107,22 +94,24 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
 
     let blocks: EditRequestLike[] | null;
     try {
-      blocks = normalizeEditArgs(input);
+      blocks = editAdapter.normalizeEditArgs(input);
     } catch (err) {
-      if (err instanceof MalformedPatchError) {
-        throw toolError(malformedPatchError(err.message, err.index));
+      if (err instanceof Error && err.name === "MalformedPatchError") {
+        throw toolError(
+          editAdapter.malformedPatchError(err.message, (err as any).index),
+        );
       }
       throw toolError(err as EditError);
     }
     if (!blocks || blocks.length === 0) {
       throw toolError(
-        validationError(
+        editAdapter.validationError(
           "No edits found. Provide path and edits[] with oldText/newText pairs.",
         ),
       );
     }
     if (blocks.some((b) => !b.path)) {
-      throw toolError(missingPathError());
+      throw toolError(editAdapter.missingPathError());
     }
 
     const summaries: string[] = [];
@@ -132,7 +121,7 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
     let primaryFirstChangedLine = 0;
 
     for (const group of groupByPath(blocks)) {
-      const absolutePath = resolveToCwd(group.path, baseCwd);
+      const absolutePath = editAdapter.resolveToCwd(group.path, baseCwd);
       throwIfAborted();
 
       const fileResult = await withFileMutationQueue(absolutePath, async () => {
@@ -143,7 +132,7 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
           await fsAccess(absolutePath, constants.R_OK | constants.W_OK);
         } catch (err) {
           throw toolError(
-            fileNotFoundError(`${group.path} (${errorCode(err)})`),
+            editAdapter.fileNotFoundError(`${group.path} (${errorCode(err)})`),
           );
         }
 
@@ -153,19 +142,19 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
           buffer = await readFile(absolutePath);
         } catch (err) {
           throw toolError(
-            validationError(
+            editAdapter.validationError(
               `Could not read ${group.path} (${errorCode(err)}) — the file may have changed or been removed. Re-read the file and retry the edit.`,
             ),
           );
         }
 
         const rawContent = buffer.toString("utf-8");
-        const { bom, text } = stripBom(rawContent);
-        const ending = detectLineEnding(text);
-        const content = normalizeNewlines(text);
+        const { bom, text } = editAdapter.stripBom(rawContent);
+        const ending = editAdapter.detectLineEnding(text);
+        const content = editAdapter.normalizeNewlines(text);
 
         // Apply edits (pse's fuzzy chain; no-match/ambiguous → pse errors)
-        const result = applyBlocks(
+        const result = editAdapter.applyBlocks(
           content,
           group.blocks as EditRequest[],
           group.path,
@@ -175,7 +164,8 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
         }
 
         // Write-form bytes: BOM prepended, line endings restored
-        const finalContent = bom + restoreLineEndings(result.content, ending);
+        const finalContent =
+          bom + editAdapter.restoreLineEndings(result.content, ending);
 
         // GATE: validate write-form bytes before any write
         const blockMessage = await validateSyntax(
@@ -189,9 +179,9 @@ export function createEditPort(cwd: string, opts?: GatedToolOptions) {
         }
 
         // Coherence warnings (non-blocking)
-        const warnings = coherenceCheck(result.content).filter(
-          (w) => !excludePatterns.some((p) => w.includes(p)),
-        );
+        const warnings = editAdapter
+          .coherenceCheck(result.content)
+          .filter((w) => !excludePatterns.some((p) => w.includes(p)));
 
         // Atomic write: temp file + rename
         const tmpPath = resolve(dirname(absolutePath), `.${randomUUID()}.tmp`);

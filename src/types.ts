@@ -6,20 +6,9 @@ import type { ExcludeConfig } from "./config/types.js";
 
 // ── Adapter types ─────────────────────────────────────────────────
 
-/** Tree-sitter adapter interface — functions the gate needs from the tree-sitter adapter. */
-export interface TreeSitterAdapter {
-  BALANCE_RULES: Record<string, LexRules>;
-  LANGUAGE_MAP: Record<string, unknown>;
-  ensureParser: () => Promise<void>;
-  loadGrammar: (entry: unknown, notify?: NotifyFn) => Promise<unknown>;
-  checkDelimiterBalance: (
-    path: string,
-    content: string,
-    rules: LexRules,
-  ) => string | null;
-  collectErrors: (tree: unknown, source: string) => string[];
-  MAX_ERRORS: number;
-}
+// Re-export TreeSitterAdapter from adapters/types.ts
+import type { TreeSitterAdapter } from "./adapters/types";
+export type { TreeSitterAdapter };
 
 /**
  * Injectable grammar seam — the validator's only external dependency.

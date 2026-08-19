@@ -14,6 +14,7 @@ import { createEditPort } from "../src/ports/edit";
 import {
   captureBlock,
   makeFakeTree,
+  makeEditAdapter,
   recordingGrammar,
   STRAY_SEMICOLON_NODE,
   withTempDir,
@@ -51,7 +52,10 @@ function createTool(
   const { execute: _baseExec, ...surface } = base;
   return {
     ...surface,
-    execute: createEditPort(cwd, { grammar: grammarFn }).execute,
+    execute: createEditPort(cwd, {
+      grammar: grammarFn,
+      editAdapter: makeEditAdapter(),
+    }).execute,
   };
 }
 
@@ -397,7 +401,10 @@ describe("gated edit: non-syntax pse error contract", () => {
       // Run the oracle (pse's own execute) for comparison
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createEditPort(dir, { grammar });
+      const host = createEditPort(dir, {
+        grammar,
+        editAdapter: makeEditAdapter(),
+      });
 
       const input = {
         path: "a.ts",
@@ -442,7 +449,10 @@ describe("gated edit: non-syntax pse error contract", () => {
 
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createEditPort(dir, { grammar });
+      const host = createEditPort(dir, {
+        grammar,
+        editAdapter: makeEditAdapter(),
+      });
 
       const input = {
         path: "a.ts",
@@ -501,7 +511,10 @@ describe("gated edit: non-syntax pse error contract", () => {
 
       const stub = {} as unknown as ExtensionAPI;
       const oracle = createRobustEditTool(dir, stub);
-      const host = createEditPort(dir, { grammar });
+      const host = createEditPort(dir, {
+        grammar,
+        editAdapter: makeEditAdapter(),
+      });
 
       const input = {
         path: "nonexistent.ts",

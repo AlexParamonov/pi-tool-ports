@@ -9,7 +9,16 @@ import { expect } from "vitest";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { createSemanticEditAdapter } from "../src/adapters/semantic-edit-adapter";
+import type { EditAdapter } from "../src/adapters/types";
 import type { GrammarFn } from "../src/types";
+
+// ── Real adapter for tests ─────────────────────────────────────────────
+
+/** Create a real semantic-edit adapter for tests. */
+export function makeEditAdapter(): EditAdapter {
+  return createSemanticEditAdapter();
+}
 
 // ── Fake web-tree-sitter trees ──────────────────────────────────────────
 // The fake nodes expose only the fields the validator reads (rootNode.hasError,

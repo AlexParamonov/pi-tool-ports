@@ -17,6 +17,7 @@ import { validateSyntax } from "../src/gates/syntax";
 import {
   recordingGrammar,
   makeFakeTree,
+  makeEditAdapter,
   STRAY_SEMICOLON_NODE,
   withTempDir,
   captureBlock,
@@ -46,7 +47,10 @@ describe("port-level: edit port with real adapters", () => {
         available: true,
         tree: makeFakeTree([]),
       });
-      const port = createEditPort(dir, { grammar });
+      const port = createEditPort(dir, {
+        grammar,
+        editAdapter: makeEditAdapter(),
+      });
 
       const result = await port.execute(
         "call-1",
@@ -77,7 +81,10 @@ describe("port-level: edit port with real adapters", () => {
         available: true,
         tree: makeFakeTree([STRAY_SEMICOLON_NODE]),
       });
-      const port = createEditPort(dir, { grammar });
+      const port = createEditPort(dir, {
+        grammar,
+        editAdapter: makeEditAdapter(),
+      });
 
       const err = await captureBlock(
         port.execute(

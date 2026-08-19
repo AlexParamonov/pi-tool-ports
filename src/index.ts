@@ -1,7 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Parser } from "web-tree-sitter";
 
-import { loadAdapter } from "./adapters/registry";
+import { createSemanticEditAdapter } from "./adapters/semantic-edit-adapter";
+import { createTreeSitterAdapter } from "./adapters/tree-sitter-adapter";
 import type { NotifyFn } from "./adapters/tree-sitter";
 
 import { loadConfig } from "./config/config-io";
@@ -28,21 +29,10 @@ export default async function extensionFactory(
     "semantic-edit",
     "tree-sitter",
   ];
-  const writeAdapters = config.ports?.write?.adapters ?? [
-    "semantic-edit",
-    "tree-sitter",
-  ];
 
-  // Load tree-sitter adapter (needed for grammar seam and gate)
-  let treeSitter: TreeSitterAdapter | undefined;
-  if (
-    editAdapters.includes("tree-sitter") ||
-    writeAdapters.includes("tree-sitter")
-  ) {
-    treeSitter = (await loadAdapter(
-      "tree-sitter",
-    )) as unknown as TreeSitterAdapter;
-  }
+  // Create adapters
+  const editAdapter = createSemanticEditAdapter();
+  const treeSitter = createTreeSitterAdapter();
 
   // Default grammar seam: loads tree-sitter WASM grammars.
   const defaultGrammar = async (
@@ -66,6 +56,7 @@ export default async function extensionFactory(
   };
 
   const editPort = createEditPort(cwd, {
+    editAdapter,
     grammar: defaultGrammar,
     treeSitter,
     exclude: config.exclude,
@@ -76,6 +67,6 @@ export default async function extensionFactory(
   });
 
   // Register ports.
-  pi.registerTool({ ...editPort.surface, execute: editPort.execute });
+  pi.registerTool({ ...editPort.surface, execute: editPort.execute } as any);
   pi.registerTool({ ...writePort.surface, execute: writePort.execute });
 }

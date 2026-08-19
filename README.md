@@ -34,6 +34,17 @@ Optional JSON config files. Project overrides global.
 
 `exclude.patterns`: substring matches against warnings. Default: `[]` (no filtering). Missing files fall back to defaults.
 
+## Licensing
+
+This project is dual-licensed:
+
+- **Our code** (`src/adapters/registry.ts`, `src/config/`, `src/ports/`, etc.): MIT (see `LICENSE`)
+- **Vendored adapter code** (`src/adapters/*/vendor/`): licensed under their original terms:
+  - `pi-semantic-edit`: MIT (copyright K2, see `src/adapters/semantic-edit/vendor/LICENSE`)
+  - `pi-tree-sitter`: EPL-2.0 (copyright Marko Kocic, see `src/adapters/tree-sitter/vendor/LICENSE`)
+
+Vendored files may be modified minimally (add exports, remove unused imports, cleanup). Logic and behavior are unchanged.
+
 ## Toolchain
 
 - Tests: `npm run test` (vitest)

@@ -7,12 +7,20 @@
 - **Adapter registry** — dynamic loading of vendored adapters based on configuration
 - **Per-port adapter config** — `ports.edit.adapters` and `ports.write.adapters` in config
 - **Build script** — `npm run build:adapters` vendors dependency source files with LICENSE files
-- **Tree-sitter adapter injection** — gate receives tree-sitter adapter via dependency injection
+- **EditAdapter interface** — ports receive semantic-edit adapter via dependency injection
+- **TreeSitterAdapter interface** — gate and ports receive tree-sitter adapter via dependency injection
 
 ### Changed
 
-- Factory loads adapters dynamically based on config instead of static imports
-- Gate accepts tree-sitter adapter injection (preserves existing grammar seam pattern)
+- Factory creates adapters and injects them into ports
+- Edit port receives editAdapter via options instead of direct imports
+- Build script copies only needed files (reduced vendor size)
+- Ports no longer import concrete adapter implementations (dependency inversion)
+
+### Fixed
+
+- Removed direct imports from concrete adapters in edit port
+- Aligned adapter interfaces with library types for type safety
 
 ## [0.0.1] — 2026-08-23
 

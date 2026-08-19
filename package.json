@@ -18,7 +18,7 @@
     "ai"
   ],
   "author": "AlexParamonov",
-  "license": "MIT",
+  "license": "(MIT AND EPL-2.0)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AlexParamonov/pi-tool-ports.git"
