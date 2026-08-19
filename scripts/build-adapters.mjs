@@ -9,7 +9,7 @@
  * Usage: node scripts/build-adapters.mjs
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
@@ -49,6 +49,12 @@ function vendorAdapter(config) {
     process.exit(1);
   }
 
+  // Clean vendor directory before copying
+  if (existsSync(vendorDir)) {
+    rmSync(vendorDir, { recursive: true, force: true });
+    console.log(`  cleaned vendor/`);
+  }
+
   mkdirSync(vendorDir, { recursive: true });
 
   // Copy files
@@ -71,18 +77,25 @@ function vendorAdapter(config) {
     }
   }
 
-  // Patch vendor/index.ts to add export keywords if needed
+  // Patch vendor/index.ts if needed
   if (config.patchExports) {
     const vendorIndex = join(vendorDir, "index.ts");
     if (existsSync(vendorIndex)) {
       let content = readFileSync(vendorIndex, "utf-8");
+      
+      // Remove unused imports (handles single and multi-line)
+      content = content.replace(/^import \{[\s\S]*?\} from "\.\/src\/edit-guard\.js";\n/gm, "");
+      content = content.replace(/^import [\s\S]*?from "\.\/src\/languages\.js";\n/gm, "");
+      content = content.replace(/^import [\s\S]*?from "\.\/src\/files\.js";\n/gm, "");
+      content = content.replace(/^import \{ Text \} from "@earendil-works\/pi-tui";\n/gm, "");
+      
+      // Add export keywords to needed symbols
       for (const symbol of config.patchExports) {
-        // Match 'const X' or 'function X' at line start, add 'export' before it
         const regex = new RegExp(`^(${symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gm");
         content = content.replace(regex, "export $1");
       }
       writeFileSync(vendorIndex, content);
-      console.log(`  patched vendor/index.ts with ${config.patchExports.length} exports`);
+      console.log(`  patched vendor/index.ts`);
     }
 
     // Generate declaration file for vendor exports
