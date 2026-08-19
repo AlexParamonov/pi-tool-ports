@@ -5,3 +5,7 @@
 
 ## Config
 - `loadConfig` fills defaults per key. A partial project config (e.g. only `edit`) drops the global `ports` entirely via `project?.ports ?? global?.ports` — not per-port inheritance.
+
+## Ingest (append new lessons at EOF)
+
+> Empty. New `## <name> (<detail>) - YYYY-MM-DD` entries land here.
