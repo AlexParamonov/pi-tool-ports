@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Consolidated semantic-edit adapter into `src/adapters/semantic-edit/index.ts` (single entry point); removed duplicate re-export files
 - Consolidated tree-sitter adapter into `src/adapters/tree-sitter/index.ts` (single entry point); removed duplicate re-export files
 - Removed semantic-edit vendor; adapter uses direct imports from `pi-semantic-edit` package
 - Factory creates adapters and injects them into ports

@@ -9,7 +9,7 @@ import { expect } from "vitest";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import { createSemanticEditAdapter } from "../src/adapters/semantic-edit-adapter";
+import { createSemanticEditAdapter } from "../src/adapters/semantic-edit";
 import type { EditAdapter } from "../src/adapters/types";
 import type { GrammarFn } from "../src/types";
 

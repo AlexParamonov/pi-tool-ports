@@ -31,6 +31,12 @@ describe("adapter registry: loadAdapter", () => {
       /unknown adapter/i,
     );
   });
+
+  test("loads the semantic-edit adapter module", async () => {
+    const mod = await loadAdapter("semantic-edit");
+    expect(typeof mod.createSemanticEditAdapter).toBe("function");
+    expect(typeof mod.applyBlocks).toBe("function");
+  });
 });
 
 // ── Port-level tests with real adapters ──────────────────────────────

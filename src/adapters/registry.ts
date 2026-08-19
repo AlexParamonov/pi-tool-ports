@@ -11,7 +11,7 @@ export type AdapterName = "semantic-edit" | "tree-sitter";
 /** Available adapter names. */
 const ADAPTERS: Record<AdapterName, () => Promise<Record<string, unknown>>> = {
   "semantic-edit": () =>
-    import("./semantic-edit.js") as Promise<Record<string, unknown>>,
+    import("./semantic-edit/index.js") as Promise<Record<string, unknown>>,
   "tree-sitter": () =>
     import("./tree-sitter/index.js") as Promise<Record<string, unknown>>,
 };

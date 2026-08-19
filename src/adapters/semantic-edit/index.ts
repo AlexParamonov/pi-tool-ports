@@ -1,8 +1,9 @@
 /**
- * Semantic edit adapter implementation.
+ * Semantic edit adapter — wraps pi-semantic-edit for use in ports.
  *
- * Wraps pi-semantic-edit to implement the EditAdapter interface.
- * This adapter is injected into the edit port at runtime.
+ * Single entry point for the adapter: re-exports the pi-semantic-edit
+ * functions and types used by the edit port, and provides the
+ * EditAdapter factory injected into the edit port at runtime.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -14,6 +15,7 @@ import {
   missingPathError,
   validationError,
 } from "pi-semantic-edit/src/domain/errors";
+import { MalformedPatchError } from "pi-semantic-edit/src/domain/parser";
 import {
   detectLineEnding,
   normalizeNewlines,
@@ -29,7 +31,27 @@ import type {
   EditError,
   EditRequest,
   EditRequestLike,
-} from "./types";
+} from "../types";
+
+// Re-export types and functions used by the edit port and the adapter registry
+export {
+  applyBlocks,
+  coherenceCheck,
+  fileNotFoundError,
+  malformedPatchError,
+  missingPathError,
+  validationError,
+  MalformedPatchError,
+  detectLineEnding,
+  normalizeNewlines,
+  resolveToCwd,
+  restoreLineEndings,
+  stripBom,
+  normalizeEditArgs,
+  createRobustEditTool,
+};
+
+export type { EditError, EditRequest, EditRequestLike };
 
 /**
  * Create the semantic edit adapter.
