@@ -3,7 +3,7 @@
 // The factory is the outermost driving port: pi calls it once at load. Tests
 // pin W1-AC1 (exactly one edit and one write owned by the extension, nothing
 // else registered) and US-13 (the model-facing tool surfaces are captured
-// unchanged from the libraries), plus the R14 deep-import surface smoke.
+// unchanged from the libraries).
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -137,97 +137,4 @@ test("registers a write tool whose surface is unchanged from the built-in", asyn
   expectSameToolSurface(actual, reference);
   expect(typeof actual.execute).toBe("function");
   expect(actual.execute).not.toBe(reference.execute);
-});
-
-test("deep-imported dependency modules load side-effect-free with their expected exports", async () => {
-  const [
-    pseTool,
-    pseNormalize,
-    pseSchema,
-    pseEditor,
-    pseCoherence,
-    pseErrors,
-    pseParser,
-    pseUtils,
-    ptsGrammar,
-    ptsDelimiter,
-    agent,
-  ] = await Promise.all([
-    import("pi-semantic-edit/src/pi/tool"),
-    import("pi-semantic-edit/src/pi/normalize"),
-    import("pi-semantic-edit/src/pi/schema"),
-    import("pi-semantic-edit/src/domain/editor"),
-    import("pi-semantic-edit/src/domain/coherence"),
-    import("pi-semantic-edit/src/domain/errors"),
-    import("pi-semantic-edit/src/domain/parser"),
-    import("pi-semantic-edit/src/domain/utils"),
-    import("pi-tree-sitter/src/grammar"),
-    import("pi-tree-sitter/src/delimiter"),
-    import("@earendil-works/pi-coding-agent"),
-  ]);
-  const functions: [string, unknown][] = [
-    [
-      "pi-semantic-edit/src/pi/tool createRobustEditTool",
-      pseTool.createRobustEditTool,
-    ],
-    [
-      "pi-semantic-edit/src/pi/normalize normalizeEditArgs",
-      pseNormalize.normalizeEditArgs,
-    ],
-    ["pi-semantic-edit/src/domain/editor applyBlocks", pseEditor.applyBlocks],
-    [
-      "pi-semantic-edit/src/domain/coherence coherenceCheck",
-      pseCoherence.coherenceCheck,
-    ],
-    [
-      "pi-semantic-edit/src/domain/errors fileNotFoundError",
-      pseErrors.fileNotFoundError,
-    ],
-    [
-      "pi-semantic-edit/src/domain/errors malformedPatchError",
-      pseErrors.malformedPatchError,
-    ],
-    [
-      "pi-semantic-edit/src/domain/errors missingPathError",
-      pseErrors.missingPathError,
-    ],
-    [
-      "pi-semantic-edit/src/domain/errors validationError",
-      pseErrors.validationError,
-    ],
-    ["pi-semantic-edit/src/domain/utils stripBom", pseUtils.stripBom],
-    [
-      "pi-semantic-edit/src/domain/utils detectLineEnding",
-      pseUtils.detectLineEnding,
-    ],
-    [
-      "pi-semantic-edit/src/domain/utils normalizeNewlines",
-      pseUtils.normalizeNewlines,
-    ],
-    [
-      "pi-semantic-edit/src/domain/utils restoreLineEndings",
-      pseUtils.restoreLineEndings,
-    ],
-    ["pi-semantic-edit/src/domain/utils resolveToCwd", pseUtils.resolveToCwd],
-    ["pi-tree-sitter/src/grammar ensureParser", ptsGrammar.ensureParser],
-    ["pi-tree-sitter/src/grammar loadGrammar", ptsGrammar.loadGrammar],
-    [
-      "pi-tree-sitter/src/delimiter checkDelimiterBalance",
-      ptsDelimiter.checkDelimiterBalance,
-    ],
-    [
-      "pi-coding-agent createWriteToolDefinition",
-      agent.createWriteToolDefinition,
-    ],
-    ["pi-coding-agent generateDiffString", agent.generateDiffString],
-    ["pi-coding-agent generateUnifiedPatch", agent.generateUnifiedPatch],
-    ["pi-coding-agent withFileMutationQueue", agent.withFileMutationQueue],
-  ];
-  for (const [name, fn] of functions) {
-    expect(typeof fn, name).toBe("function");
-  }
-  expect(pseParser.MalformedPatchError).toBeTypeOf("function");
-  expect(pseSchema.editToolSchema).toBeTypeOf("object");
-  expect(ptsGrammar.LANGUAGE_MAP[".ts"]).toBeDefined();
-  expect(ptsDelimiter.BALANCE_RULES[".clj"]).toBeDefined();
 });

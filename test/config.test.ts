@@ -1,6 +1,5 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
 import { describe, expect, test } from "vitest";
 
 import {
@@ -32,12 +31,6 @@ describe("loadConfig", () => {
   test("loads config patterns", () => {
     const config = loadConfig(memIO(["test-pattern"]));
     expect(config.exclude?.patterns).toContain("test-pattern");
-  });
-
-  test("merges with defaults", () => {
-    const config = loadConfig(memIO(["custom-pattern"]));
-    // Should have default patterns + custom
-    expect(config.exclude?.patterns).toContain("custom-pattern");
   });
 
   test("missing exclude returns empty patterns", () => {

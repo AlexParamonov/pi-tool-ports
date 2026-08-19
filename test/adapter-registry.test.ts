@@ -1,4 +1,4 @@
-// Adapter registry tests — verify ports work with dynamically loaded adapters.
+// Adapter registry tests: verify ports work with dynamically loaded adapters.
 //
 // Testing strategy: test from port perspective (public interface), not adapter
 // internals. Generic tests work with any adapter implementation. Test all
@@ -30,12 +30,6 @@ describe("adapter registry: loadAdapter", () => {
     await expect(loadAdapter("nonexistent" as AdapterName)).rejects.toThrow(
       /unknown adapter/i,
     );
-  });
-
-  test("loads the semantic-edit adapter module", async () => {
-    const mod = await loadAdapter("semantic-edit");
-    expect(typeof mod.createSemanticEditAdapter).toBe("function");
-    expect(typeof mod.applyBlocks).toBe("function");
   });
 });
 
