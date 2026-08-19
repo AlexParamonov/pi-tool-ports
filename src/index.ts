@@ -6,42 +6,52 @@ import { createTreeSitterAdapter } from "./adapters/tree-sitter";
 import type { NotifyFn } from "./adapters/tree-sitter";
 
 import { loadConfig } from "./config/config-io";
+import type { ConfigIO } from "./config/config-io";
 import { createEditPort } from "./ports/edit";
 import { createWritePort } from "./ports/write";
-import type { GrammarResult, TreeSitterAdapter } from "./types";
+import type { GrammarResult } from "./types";
 
 /**
- * Extension factory: registers exactly one `edit` and one `write` tool.
- * Captures every surface field from the libraries unchanged; only `execute`
- * is swapped for the host's gated implementation.
+ * Extension factory: registers the `edit` and `write` tools, capturing
+ * every surface field from the libraries unchanged; only `execute` is
+ * swapped for the host's gated implementation.
  *
- * Adapters are loaded dynamically based on configuration, so only enabled
- * adapters are imported at runtime.
+ * Per-port adapter lists (`ports.<port>.adapters`) select behavior:
+ * - a port registers only when its list contains its engine — edit needs
+ *   `semantic-edit`; write has the built-in write, so any non-empty list
+ *   registers it. An explicit `[]` disables the port.
+ * - the syntax gate runs only when the list contains `tree-sitter`.
+ *   Gate state is per port; the shared tree-sitter adapter is never
+ *   modified, so one port's gate state cannot affect the other.
+ * Unknown adapter names are ignored.
+ *
+ * @param pi host extension API
+ * @param io config source (injected in tests; defaults to the file-based config)
  */
 export default async function extensionFactory(
   pi: ExtensionAPI,
+  io?: ConfigIO,
 ): Promise<void> {
   const cwd = process.cwd();
-  const config = loadConfig();
+  const config = loadConfig(io);
 
-  // Dynamically load adapters based on config.
-  const editAdapters = config.ports?.edit?.adapters ?? [
-    "semantic-edit",
-    "tree-sitter",
-  ];
+  const editAdapters = config.ports.edit.adapters;
+  const writeAdapters = config.ports.write.adapters;
 
-  // Create adapters
-  const editAdapter = createSemanticEditAdapter();
+  const editEnabled = editAdapters.includes("semantic-edit");
+  const writeEnabled = writeAdapters.length > 0;
+  const editGateOn = editAdapters.includes("tree-sitter");
+  const writeGateOn = writeAdapters.includes("tree-sitter");
+
+  // One shared tree-sitter adapter for both ports' gates.
   const treeSitter = createTreeSitterAdapter();
 
   // Default grammar seam: loads tree-sitter WASM grammars.
-  const defaultGrammar = async (
+  const grammar = async (
     ext: string,
     content: string,
     notify?: NotifyFn,
   ): Promise<GrammarResult> => {
-    if (!treeSitter) return { available: false, tree: null };
-
     const entry = treeSitter.LANGUAGE_MAP[ext.toLowerCase()];
     if (!entry) return { available: false, tree: null };
 
@@ -55,18 +65,29 @@ export default async function extensionFactory(
     return { available: true, tree };
   };
 
-  const editPort = createEditPort(cwd, {
-    editAdapter,
-    grammar: defaultGrammar,
-    treeSitter,
-    exclude: config.exclude,
-  });
-  const writePort = createWritePort(cwd, {
-    grammar: defaultGrammar,
-    treeSitter,
-  });
+  // Construct every enabled port before any registration, so a
+  // construction failure propagates with zero registrations.
+  const editPort = editEnabled
+    ? createEditPort(cwd, {
+        editAdapter: createSemanticEditAdapter(),
+        grammar,
+        treeSitter,
+        gate: editGateOn,
+        exclude: config.exclude,
+      })
+    : null;
+  const writePort = writeEnabled
+    ? createWritePort(cwd, {
+        grammar,
+        treeSitter,
+        gate: writeGateOn,
+      })
+    : null;
 
-  // Register ports.
-  pi.registerTool({ ...editPort.surface, execute: editPort.execute } as any);
-  pi.registerTool({ ...writePort.surface, execute: writePort.execute });
+  if (editPort) {
+    pi.registerTool({ ...editPort.surface, execute: editPort.execute } as any);
+  }
+  if (writePort) {
+    pi.registerTool({ ...writePort.surface, execute: writePort.execute });
+  }
 }

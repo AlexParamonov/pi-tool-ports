@@ -20,6 +20,18 @@ export interface ToolPortsConfig {
   };
 }
 
+/**
+ * Config resolved with defaults applied: every field populated.
+ * This is what `loadConfig` returns — no field needs a fallback after.
+ */
+export type ResolvedConfig = {
+  exclude: { patterns: string[] };
+  ports: {
+    edit: { adapters: AdapterName[] };
+    write: { adapters: AdapterName[] };
+  };
+};
+
 /** Built-in defaults. */
 export const DEFAULT_CONFIG: ToolPortsConfig = {
   exclude: {},

@@ -28,11 +28,17 @@ Optional JSON config files. Project overrides global.
 {
   "exclude": {
     "patterns": ["indentation jump"]
+  },
+  "ports": {
+    "edit": { "adapters": ["semantic-edit", "tree-sitter"] },
+    "write": { "adapters": ["semantic-edit", "tree-sitter"] }
   }
 }
 ```
 
 `exclude.patterns`: substring matches against warnings. Default: `[]` (no filtering). Missing files fall back to defaults.
+
+`ports.<port>.adapters` selects the adapters per port. Both default to `["semantic-edit", "tree-sitter"]` (the current behavior). An explicit `[]` disables the port — its tool is not registered. The `edit` tool registers only when `semantic-edit` is listed (it is the port's engine); the `write` tool registers for any non-empty list. The syntax gate runs only for ports that list `tree-sitter`; gate state is per port, so disabling tree-sitter for one port leaves the other port's gate fully functional. Unknown adapter names are ignored.
 
 ## Licensing
 

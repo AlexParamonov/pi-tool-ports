@@ -39,6 +39,8 @@ export interface GatedToolOptions {
   grammar?: GrammarFn;
   treeSitter?: TreeSitterAdapter;
   exclude?: ExcludeConfig;
+  /** Run the syntax gate for this port. Default: true. */
+  gate?: boolean;
 }
 
 // ── Gate error contract ─────────────────────────────────────────────

@@ -10,7 +10,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { ExcludeConfig, ToolPortsConfig } from "./types.js";
+import type {
+  ExcludeConfig,
+  ResolvedConfig,
+  ToolPortsConfig,
+} from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
 const CONFIG_FILE_NAME = "pi-tool-ports.json";
@@ -45,7 +49,7 @@ export function createFileConfigIO(projectDir?: string): ConfigIO {
 }
 
 /** Read config, merged with defaults. Accepts injectable ConfigIO for testing. */
-export function loadConfig(io?: ConfigIO): ToolPortsConfig {
+export function loadConfig(io?: ConfigIO): ResolvedConfig {
   const loaded = (io ?? createFileConfigIO()).load();
   const g: ExcludeConfig = loaded.exclude ?? {};
   return {

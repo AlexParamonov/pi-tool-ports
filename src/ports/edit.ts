@@ -72,7 +72,8 @@ export function createEditPort(
   cwd: string,
   opts: GatedToolOptions & { editAdapter: EditAdapter },
 ) {
-  const { editAdapter, grammar, treeSitter, exclude } = opts;
+  const { editAdapter, grammar, treeSitter, exclude, gate } = opts;
+  const gateOn = gate !== false;
   const stub = {} as unknown as ExtensionAPI;
   const base = editAdapter.createRobustEditTool(cwd, stub);
   const { execute: _baseExecute, ...surface } = base as Record<string, unknown>;
@@ -168,14 +169,16 @@ export function createEditPort(
           bom + editAdapter.restoreLineEndings(result.content, ending);
 
         // GATE: validate write-form bytes before any write
-        const blockMessage = await validateSyntax(
-          group.path,
-          finalContent,
-          grammar,
-          treeSitter,
-        );
-        if (blockMessage !== null) {
-          throw gateBlockError(blockMessage);
+        if (gateOn) {
+          const blockMessage = await validateSyntax(
+            group.path,
+            finalContent,
+            grammar,
+            treeSitter,
+          );
+          if (blockMessage !== null) {
+            throw gateBlockError(blockMessage);
+          }
         }
 
         // Coherence warnings (non-blocking)
