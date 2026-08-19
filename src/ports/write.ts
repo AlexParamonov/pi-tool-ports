@@ -45,6 +45,7 @@ function builtinResolveToCwd(filePath: string, cwd: string): string {
 
 export function createWritePort(cwd: string, options?: GatedToolOptions) {
   const grammar = options?.grammar;
+  const treeSitter = options?.treeSitter;
   const builtinDef = createWriteToolDefinition(cwd);
   const { execute: _baseExecute, ...surface } = builtinDef;
 
@@ -59,7 +60,12 @@ export function createWritePort(cwd: string, options?: GatedToolOptions) {
     const absolutePath = builtinResolveToCwd(path, baseCwd);
 
     // GATE before any I/O: validate the exact content against the resolved path
-    const blockMessage = await validateSyntax(absolutePath, content, grammar);
+    const blockMessage = await validateSyntax(
+      absolutePath,
+      content,
+      grammar,
+      treeSitter,
+    );
     if (blockMessage !== null) {
       throw gateBlockError(blockMessage);
     }

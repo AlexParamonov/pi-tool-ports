@@ -15,6 +15,13 @@ import {
 } from "pi-tree-sitter/src/grammar";
 import type { NotifyFn } from "pi-tree-sitter/src/grammar";
 
+import {
+  lineAt,
+  formatError,
+  collectErrors,
+  MAX_ERRORS,
+} from "./tree-sitter/exports.js";
+
 // Re-export everything used by gate.ts and index.ts
 export {
   BALANCE_RULES,
@@ -22,6 +29,10 @@ export {
   LANGUAGE_MAP,
   ensureParser,
   loadGrammar,
+  lineAt,
+  formatError,
+  collectErrors,
+  MAX_ERRORS,
 };
 
 export type { NotifyFn };

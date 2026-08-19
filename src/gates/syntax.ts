@@ -1,47 +1,26 @@
 /**
- * Syntax-validation gate \u2014 validates content before write.
+ * Syntax-validation gate — validates content before write.
  *
  * Uses tree-sitter for full AST parsing and delimiter balance checks.
- * The grammar seam is injectable: unit tests use fake parse trees.
+ * Both the grammar seam and tree-sitter adapter are injectable: unit tests
+ * use fake parse trees and the factory injects the real adapter.
  */
-import {
-  BALANCE_RULES,
-  checkDelimiterBalance,
-  LANGUAGE_MAP,
-} from "../adapters/tree-sitter";
-import {
-  MAX_ERRORS,
-  lineAt,
-  formatError,
-  collectErrors,
-} from "../adapters/tree-sitter/internal";
+import type { LexRules } from "pi-tree-sitter/src/delimiter";
 
-import type { GrammarFn } from "../types";
+import type { GrammarFn, TreeSitterAdapter } from "../types";
 
 const GUARD_MSG =
   "Fix and re-submit. (This is a pre-write guard \u2014 the file was NOT modified.)\n";
 
-function formatErrors(errors: string[]): string {
+function formatErrors(errors: string[], maxErrors: number): string {
   let body = errors.join("\n");
-  if (errors.length >= MAX_ERRORS) {
+  if (errors.length >= maxErrors) {
     body +=
       "\n  \u2026(truncated at " +
-      MAX_ERRORS +
+      maxErrors +
       " errors; fix the listed issues and re-check)";
   }
   return body;
-}
-
-interface NodeLike {
-  type: string;
-  isError: boolean;
-  isMissing: boolean;
-  startPosition: { row: number; column: number };
-  startIndex: number;
-  endIndex: number;
-  childCount: number;
-  child: (i: number) => NodeLike;
-  children: NodeLike[];
 }
 
 // ── Gate decision table ────────────────────────────────────────────────
@@ -56,22 +35,28 @@ export async function validateSyntax(
   path: string,
   content: string,
   grammar?: GrammarFn,
+  treeSitter?: TreeSitterAdapter,
   notify?: (message: string, level: "info" | "error") => void,
 ): Promise<string | null> {
   const ext = path.match(/\.[^.]+$/)?.[0]?.toLowerCase();
   if (!ext) return null;
 
-  const rules = BALANCE_RULES[ext];
+  const {
+    BALANCE_RULES,
+    LANGUAGE_MAP,
+    checkDelimiterBalance,
+    collectErrors,
+    MAX_ERRORS,
+  } = treeSitter ?? (await import("../adapters/tree-sitter"));
+
+  const rules = BALANCE_RULES[ext] as LexRules | undefined;
   if (!rules && !(ext in LANGUAGE_MAP)) return null;
 
   if (grammar) {
     const stage = await grammar(ext, content, notify);
 
     if (stage.available && stage.tree && stage.tree.rootNode.hasError) {
-      const errors = collectErrors(
-        stage.tree as unknown as { rootNode: NodeLike },
-        content,
-      );
+      const errors = collectErrors(stage.tree, content);
       if (errors.length > 0) {
         let balanceErr: string | null = null;
         if (rules) {
@@ -91,7 +76,7 @@ export async function validateSyntax(
             "Delimiter balance also reports issues:\n  " + balanceErr + "\n";
         }
         msg += GUARD_MSG;
-        msg += formatErrors(errors);
+        msg += formatErrors(errors, MAX_ERRORS);
         return msg;
       }
     }

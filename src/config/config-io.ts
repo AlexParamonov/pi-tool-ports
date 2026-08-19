@@ -38,6 +38,7 @@ export function createFileConfigIO(projectDir?: string): ConfigIO {
               []),
           ],
         },
+        ports: (project?.ports ?? global?.ports) as ToolPortsConfig["ports"],
       };
     },
   };
@@ -53,6 +54,22 @@ export function loadConfig(io?: ConfigIO): ToolPortsConfig {
         ...(DEFAULT_CONFIG.exclude?.patterns ?? []),
         ...(g.patterns ?? []),
       ],
+    },
+    ports: {
+      edit: {
+        adapters: loaded.ports?.edit?.adapters ??
+          DEFAULT_CONFIG.ports?.edit?.adapters ?? [
+            "semantic-edit",
+            "tree-sitter",
+          ],
+      },
+      write: {
+        adapters: loaded.ports?.write?.adapters ??
+          DEFAULT_CONFIG.ports?.write?.adapters ?? [
+            "semantic-edit",
+            "tree-sitter",
+          ],
+      },
     },
   };
 }

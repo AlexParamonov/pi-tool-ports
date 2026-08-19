@@ -1,7 +1,15 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import { describe, expect, test } from "vitest";
 
-import { loadConfig, type ConfigIO } from "../src/config/config-io";
-import { DEFAULT_CONFIG } from "../src/config/types";
+import {
+  createFileConfigIO,
+  loadConfig,
+  type ConfigIO,
+} from "../src/config/config-io";
+import { DEFAULT_CONFIG, type ToolPortsConfig } from "../src/config/types";
+import { withTempDir } from "./helpers";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -38,5 +46,94 @@ describe("loadConfig", () => {
     };
     const config = loadConfig(io);
     expect(config.exclude?.patterns).toEqual([]);
+  });
+});
+
+describe("createFileConfigIO", () => {
+  test("preserves ports from project config file", async () => {
+    await withTempDir(async (dir) => {
+      await writeFile(
+        join(dir, "pi-tool-ports.json"),
+        JSON.stringify({
+          ports: {
+            edit: { adapters: ["semantic-edit"] },
+            write: { adapters: ["tree-sitter"] },
+          },
+        }),
+      );
+      const io = createFileConfigIO(dir);
+      const loaded = io.load();
+      expect(loaded.ports?.edit?.adapters).toEqual(["semantic-edit"]);
+      expect(loaded.ports?.write?.adapters).toEqual(["tree-sitter"]);
+    });
+  });
+
+  test("preserves ports alongside exclude from project config", async () => {
+    await withTempDir(async (dir) => {
+      await writeFile(
+        join(dir, "pi-tool-ports.json"),
+        JSON.stringify({
+          exclude: { patterns: ["node_modules"] },
+          ports: {
+            edit: { adapters: ["tree-sitter"] },
+          },
+        }),
+      );
+      const io = createFileConfigIO(dir);
+      const loaded = io.load();
+      expect(loaded.exclude?.patterns).toContain("node_modules");
+      expect(loaded.ports?.edit?.adapters).toEqual(["tree-sitter"]);
+      expect(loaded.ports?.write?.adapters).toBeUndefined();
+    });
+  });
+
+  test("returns empty config when no files exist", () => {
+    const io = createFileConfigIO("/nonexistent/path");
+    const loaded = io.load();
+    expect(loaded.ports).toBeUndefined();
+  });
+});
+
+describe("adapter config", () => {
+  test("default config has all adapters enabled for all ports", () => {
+    const config = loadConfig(memIO());
+    expect(config.ports?.edit?.adapters).toEqual([
+      "semantic-edit",
+      "tree-sitter",
+    ]);
+    expect(config.ports?.write?.adapters).toEqual([
+      "semantic-edit",
+      "tree-sitter",
+    ]);
+  });
+
+  test("config with custom port adapters overrides defaults", () => {
+    const customConfig: ToolPortsConfig = {
+      ports: {
+        edit: { adapters: ["semantic-edit"] },
+        write: { adapters: ["tree-sitter"] },
+      },
+    };
+    const io: ConfigIO = {
+      load: () => customConfig,
+    };
+    const config = loadConfig(io);
+    expect(config.ports?.edit?.adapters).toEqual(["semantic-edit"]);
+    expect(config.ports?.write?.adapters).toEqual(["tree-sitter"]);
+  });
+
+  test("config without ports gets default adapter selection", () => {
+    const io: ConfigIO = {
+      load: () => ({}),
+    };
+    const config = loadConfig(io);
+    expect(config.ports?.edit?.adapters).toEqual([
+      "semantic-edit",
+      "tree-sitter",
+    ]);
+    expect(config.ports?.write?.adapters).toEqual([
+      "semantic-edit",
+      "tree-sitter",
+    ]);
   });
 });

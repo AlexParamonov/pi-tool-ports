@@ -44,11 +44,11 @@
     "LICENSE"
   ],
   "scripts": {
+    "build:adapters": "node scripts/build-adapters.mjs",
     "format": "prettier --write src/ test/",
     "format:check": "prettier --check src/ test/",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "postinstall": "node -e \"const fs=require('fs'),p=require('path');const dir='src/adapters/tree-sitter/vendor';if(!fs.existsSync(dir)){fs.mkdirSync(dir,{recursive:true});}const src=p.join('node_modules/pi-tree-sitter/index.ts');const dst=p.join(dir,'index.ts');if(!fs.existsSync(dst)){fs.linkSync(src,dst);console.log('Created vendor hardlink');}\""
+    "test": "vitest run"
   },
   "pi": {
     "extensions": [
