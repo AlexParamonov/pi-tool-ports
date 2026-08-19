@@ -11,8 +11,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { createWriteToolDefinition } from "@earendil-works/pi-coding-agent";
 
-import { validateSyntax } from "../gates/syntax";
-import { gateBlockError, type GatedToolOptions } from "../types";
+import { runSyntaxGate } from "../gates/syntax";
+import type { GatedToolOptions } from "../types";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -62,15 +62,7 @@ export function createWritePort(cwd: string, options?: GatedToolOptions) {
 
     // GATE before any I/O: validate the exact content against the resolved path
     if (gateOn) {
-      const blockMessage = await validateSyntax(
-        absolutePath,
-        content,
-        grammar,
-        treeSitter,
-      );
-      if (blockMessage !== null) {
-        throw gateBlockError(blockMessage);
-      }
+      await runSyntaxGate(absolutePath, content, grammar, treeSitter);
     }
 
     // Clean: delegate to the built-in execute with the same baseCwd

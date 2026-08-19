@@ -27,8 +27,8 @@ import type {
   EditRequestLike,
 } from "../adapters/types";
 
-import { validateSyntax } from "../gates/syntax";
-import { gateBlockError, type GatedToolOptions } from "../types";
+import { runSyntaxGate } from "../gates/syntax";
+import type { GatedToolOptions } from "../types";
 
 // --- Throw an Error carrying a structured EditError (for renderers/debugging) ---
 function toolError(error: EditError): Error {
@@ -170,15 +170,7 @@ export function createEditPort(
 
         // GATE: validate write-form bytes before any write
         if (gateOn) {
-          const blockMessage = await validateSyntax(
-            group.path,
-            finalContent,
-            grammar,
-            treeSitter,
-          );
-          if (blockMessage !== null) {
-            throw gateBlockError(blockMessage);
-          }
+          await runSyntaxGate(group.path, finalContent, grammar, treeSitter);
         }
 
         // Coherence warnings (non-blocking)
