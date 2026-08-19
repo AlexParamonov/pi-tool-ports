@@ -136,4 +136,18 @@ describe("adapter config", () => {
       "tree-sitter",
     ]);
   });
+
+  test("unknown adapter names are dropped, known names kept", () => {
+    const io: ConfigIO = {
+      load: () => ({
+        ports: {
+          write: { adapters: ["tree-sitter", "treesitter"] },
+          edit: { adapters: ["bogus"] },
+        },
+      }),
+    };
+    const config = loadConfig(io);
+    expect(config.ports.write.adapters).toEqual(["tree-sitter"]);
+    expect(config.ports.edit.adapters).toEqual([]);
+  });
 });

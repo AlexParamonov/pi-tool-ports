@@ -127,6 +127,39 @@ describe("factory: honors ports.<port>.adapters registration", () => {
     });
     expect(toolNames(registered)).toEqual(["write"]);
   });
+
+  test("write list with only unknown adapter names disables the write tool", async () => {
+    const { calls, registered } = await runFactory({
+      write: { adapters: ["treesitter"] },
+    });
+    expect(toolNames(registered)).toEqual(["edit"]);
+    expect(calls).toEqual(["registerTool"]);
+  });
+
+  test("write list with an unknown name alongside tree-sitter keeps the gate on", async () => {
+    await withTempDir(async (dir) => {
+      const { grammar, calls } = brokenGrammar();
+      const { registered } = await runFactory(
+        {
+          edit: { adapters: [] },
+          write: { adapters: ["tree-sitter", "treesitter"] },
+        },
+        grammar,
+      );
+      expect(toolNames(registered)).toEqual(["write"]);
+
+      await expect(
+        writeExecuteOf(registered)(
+          "call-1",
+          { path: "a.ts", content: BROKEN_TS },
+          undefined,
+          undefined,
+          stubCtx(dir),
+        ),
+      ).rejects.toThrow("Syntax check failed");
+      expect(calls).toEqual([{ ext: ".ts", content: BROKEN_TS }]);
+    });
+  });
 });
 
 describe("factory: per-port gate state (shared tree-sitter)", () => {

@@ -17,6 +17,15 @@ const ADAPTERS: Record<AdapterName, () => Promise<Record<string, unknown>>> = {
 };
 
 /**
+ * Type guard for the registry's known adapter names.
+ * list counts only known names; a list of only unknown names disables
+ * the port instead of silently dropping its safety behavior.
+ */
+export function isAdapterName(name: string): name is AdapterName {
+  return name in ADAPTERS;
+}
+
+/**
  * Load an adapter by name. Returns the adapter module's runtime exports.
  *
  * @throws {Error} if the adapter name is unknown.

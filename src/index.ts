@@ -16,13 +16,13 @@ import type { GrammarFn } from "./types";
  * swapped for the host's gated implementation.
  *
  * Per-port adapter lists (`ports.<port>.adapters`) select behavior:
- * - a port registers only when its list contains its engine — edit needs
- *   `semantic-edit`; write has the built-in write, so any non-empty list
- *   registers it. An explicit `[]` disables the port.
+ * - a port registers only when its resolved list is non-empty; edit
+ *   additionally needs its engine `semantic-edit`. Unknown names are
+ *   dropped at config resolution, so an explicit `[]` — or a list of
+ *   only unknown names — disables the port.
  * - the syntax gate runs only when the list contains `tree-sitter`.
  *   Gate state is per port; the shared tree-sitter adapter is never
  *   modified, so one port's gate state cannot affect the other.
- * Unknown adapter names are ignored.
  *
  * @param pi host extension API
  * @param io config source (injected in tests; defaults to the file-based config)
@@ -41,6 +41,8 @@ export default async function extensionFactory(
   const writeAdapters = config.ports.write.adapters;
 
   const editEnabled = editAdapters.includes("semantic-edit");
+  // Resolved lists contain only known adapter names (config resolution
+  // drops unknowns), so non-empty means the user enabled the port.
   const writeEnabled = writeAdapters.length > 0;
   const editGateOn = editAdapters.includes("tree-sitter");
   const writeGateOn = writeAdapters.includes("tree-sitter");
