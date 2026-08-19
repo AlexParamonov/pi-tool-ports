@@ -28,11 +28,16 @@ Optional JSON config files. Project overrides global.
 {
   "exclude": {
     "patterns": ["indentation jump"]
+  },
+  "ports": {
+    "edit": { "adapters": ["semantic-edit", "tree-sitter"] },
+    "write": { "adapters": ["semantic-edit", "tree-sitter"] }
   }
 }
 ```
 
-`exclude.patterns`: substring matches against warnings. Default: `[]` (no filtering). Missing files fall back to defaults.
+- `exclude.patterns`: substring matches against warnings. Default: `[]`.
+- `ports.*.adapters`: which adapter libraries a port uses. Default: both.
 
 ## Licensing
 
