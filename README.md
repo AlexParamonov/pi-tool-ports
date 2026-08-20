@@ -35,7 +35,7 @@ Optional JSON config files. Project overrides global.
   },
   "ports": {
     "edit": { "adapters": ["semantic-edit", "tree-sitter"] },
-    "write": { "adapters": ["semantic-edit", "tree-sitter"] }
+    "write": { "adapters": ["tree-sitter"] }
   }
 }
 ```
